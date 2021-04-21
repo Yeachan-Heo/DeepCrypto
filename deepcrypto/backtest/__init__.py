@@ -176,11 +176,13 @@ def run_backtest_compiled(
             realized, realized_percent, cash, entry_price, position_size, position_side = process_order(
                 trade_cost, slippage, cash, entry_price, position_size, position_side, order_size, order_side, price)
 
-            order_logger.append((timestamp, realized, realized_percent, temp))
+            hold_bars = i - last_entry if realized else 0
+
+            order_logger.append((timestamp, realized, realized_percent, temp, target_position, hold_bars, price))
                 #print(order_logger[-1])
 
             if (((not temp) and position_side) or (temp and (temp != position_side))):
-                last_entry = timestamp
+                last_entry = i
 
             elif not position_side:
                 last_entry = np.inf
@@ -190,7 +192,7 @@ def run_backtest_compiled(
 
         if position_side:
             take_profit_flag, stop_loss_flag = 0, 0
-            time_cut_flag = (timestamp - last_entry) > time_cut
+            time_cut_flag = (i - last_entry) >= time_cut
             # print(timestamp, last_entry, timestamp - last_entry, time_cut)
 
             if low_first:
@@ -228,7 +230,9 @@ def run_backtest_compiled(
             realized, realized_percent, cash, entry_price, position_size, position_side = process_order(
                 trade_cost, slippage, cash, entry_price, position_size, position_side, order_size, order_side, price)
 
-            order_logger.append((timestamp, realized, realized_percent, temp))
+            hold_bars = i - last_entry if realized else 0
+
+            order_logger.append((timestamp, realized, realized_percent, temp, target_position, hold_bars, price))
                 #print(order_logger[-1])
 
             if (((not temp) and position_side) or (temp and (temp != position_side))):
@@ -305,7 +309,7 @@ class BacktestAccessor:
             df["low_first"].values.astype(bool)
         )
 
-        order_df = pd.DataFrame(order_logger, columns=["timestamp", "realized", "realized_percent", "side"])
+        order_df = pd.DataFrame(order_logger, columns=["timestamp", "realized", "realized_percent", "prev_side", "desired_side", "hold_bars", "order_price"])
         portfolio_df = pd.DataFrame(portfolio_logger,
                                     columns=["timestamp", "portfolio_value", "cash", "open", "entry_price",
                                              "position_side", "position_size", "unrealized_pnl_percent"])
@@ -317,7 +321,7 @@ class BacktestAccessor:
         return portfolio_df, order_df
 
     def __call__(self, *args, **kwargs):
-        self.run(*args, **kwargs)
+        return self.run(*args, **kwargs)
 
 def strategy(fn):
     def wrapped(config, df):
