@@ -1,4 +1,5 @@
 import quantstats as qs
+import os, json
 
 def _calc_from_order_df(order_df, label="bothside"):
     a = {}
@@ -26,3 +27,23 @@ def all_metrics(portfolio_df, order_df):
     ret.update(metric_from_quantstats(portfolio_df["portfolio_value"]))
     ret.update(calc_from_order_df(order_df))
     return ret
+
+
+def save_results(cfg, strategy, df, save_dir, save_name):
+    sdir = os.path.join(save_dir, save_name)
+
+    if not os.path.exists(sdir):
+        os.makedirs(sdir)
+
+    portf_df, order_df = strategy(cfg, df).backtest.run()
+    metrics = all_metrics(portf_df, order_df)
+
+    with open(os.path.join(sdir, "config.json"), "w") as f:
+        f.write(json.dumps(cfg))
+    with open(os.path.join(sdir, "metrics.json"), "w") as f:
+        f.write(json.dumps(metrics))
+
+    portf_df.to_csv(os.path.join(sdir, "portfolio.csv"))
+    order_df.to_csv(os.path.join(sdir, "order.csv"))
+
+    qs.reports.html(portf_df["portfolio_value"], benchmark=portf_df["open"], output=os.path.join(sdir, "report.html"))

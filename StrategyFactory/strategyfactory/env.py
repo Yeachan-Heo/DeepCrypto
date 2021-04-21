@@ -1,10 +1,9 @@
 import os
 import gym
 import numpy as np
-import string, random
 from gym import spaces
 from .tree import Tree
-from deepcrypto.backtest.lightning import LightningBroker
+
 
 def evaluate_for_one_ticker(factor, label):
     mask = np.where(~np.isnan(factor) & ~np.isnan(label))
