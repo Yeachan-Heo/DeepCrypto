@@ -112,7 +112,8 @@ def run_backtest_compiled(
         time_cut_seq,
         stop_loss_seq,
         take_profit_seq,
-        low_first_seq):
+        low_first_seq,
+        simple_interest=False):
 
     portfolio_value_logger = []
     order_logger = []
@@ -166,7 +167,8 @@ def run_backtest_compiled(
         target_position = order_logic(
             position_side, enter_long, enter_short, close_long, close_short)
 
-        order_size, order_side = get_order(bet, position_side, position_size, target_position, portfolio_value, price)
+        max_position_size = portfolio_value if not simple_interest else initial_cash
+        order_size, order_side = get_order(bet, position_side, position_size, target_position, max_position_size, price)
 
         if position_side != target_position:
             temp = position_side
@@ -273,7 +275,7 @@ class BacktestAccessor:
 
         return df
 
-    def run(self, initial_cash=10000, log_time=True):
+    def run(self, initial_cash=10000, simple_interest=False, log_time=True):
         df = deepcopy(self._obj)
 
         df["enter_long"] = df["enter_long"].shift(1)
@@ -306,7 +308,8 @@ class BacktestAccessor:
             df["time_cut"].values.astype(np.float64),
             df["stop_loss"].values.astype(np.float64),
             df["take_profit"].values.astype(np.float64),
-            df["low_first"].values.astype(bool)
+            df["low_first"].values.astype(bool),
+            simple_interest
         )
 
         order_df = pd.DataFrame(order_logger, columns=["timestamp", "realized", "realized_percent", "prev_side", "desired_side", "hold_bars", "order_price"])
@@ -363,5 +366,6 @@ def test_ma_crossover():
     qs.reports.html(data["portfolio_value"].resample("1D").last(), benchmark=data["open"].resample("1D").last(), output="./out.html")
 
 if __name__ == '__main__':
-    test_ma_crossover()
+    for x in range(2):
+        test_ma_crossover()
 
