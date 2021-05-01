@@ -277,54 +277,57 @@ class BacktestAccessor:
 
     def run(self, initial_cash=10000, simple_interest=False, log_time=True):
         df = deepcopy(self._obj)
-
-        df["enter_long"] = df["enter_long"].shift(1)
-        df["enter_short"] = df["enter_short"].shift(1)
-        df["close_long"] = df["close_long"].shift(1)
-        df["close_short"] = df["close_short"].shift(1)
-        df["bet"] = df["bet"].shift(1)
-        df["stop_loss"] = df["stop_loss"].shift(1)
-        df["take_profit"] = df["take_profit"].shift(1)
-        df["time_cut"] = df["time_cut"].shift(1)
-
-        df = df.ffill().dropna()
-
-
-        t = time.time()
-
-        order_logger, portfolio_logger = run_backtest_compiled(
-            np.array(initial_cash).astype(np.float64),
-            df.index.values.astype(np.int64),
-            df["open"].values.astype(np.float64),
-            df["high"].values.astype(np.float64),
-            df["low"].values.astype(np.float64),
-            df["enter_long"].values.astype(np.float64),
-            df["enter_short"].values.astype(np.float64),
-            df["close_long"].values.astype(np.float64),
-            df["close_short"].values.astype(np.float64),
-            df["bet"].values.astype(np.float64),
-            df["trade_cost"].values.astype(np.float64),
-            df["slippage"].values.astype(np.float64),
-            df["time_cut"].values.astype(np.float64),
-            df["stop_loss"].values.astype(np.float64),
-            df["take_profit"].values.astype(np.float64),
-            df["low_first"].values.astype(bool),
-            simple_interest
-        )
-
-        order_df = pd.DataFrame(order_logger, columns=["timestamp", "realized", "realized_percent", "prev_side", "desired_side", "hold_bars", "order_price"])
-        portfolio_df = pd.DataFrame(portfolio_logger,
-                                    columns=["timestamp", "portfolio_value", "cash", "open", "entry_price",
-                                             "position_side", "position_size", "unrealized_pnl_percent"])
-        portfolio_df.index = pd.to_datetime(portfolio_df["timestamp"])
-
-        if log_time:
-            print(f"backtest completed in {time.time() - t} seconds")
-
-        return portfolio_df, order_df
+        return run_backtest_df(df, initial_cash, simple_interest, log_time)
 
     def __call__(self, *args, **kwargs):
         return self.run(*args, **kwargs)
+
+def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True):
+
+    df["enter_long"] = df["enter_long"].shift(1)
+    df["enter_short"] = df["enter_short"].shift(1)
+    df["close_long"] = df["close_long"].shift(1)
+    df["close_short"] = df["close_short"].shift(1)
+    df["bet"] = df["bet"].shift(1)
+    df["stop_loss"] = df["stop_loss"].shift(1)
+    df["take_profit"] = df["take_profit"].shift(1)
+    df["time_cut"] = df["time_cut"].shift(1)
+
+    df = df.ffill().dropna()
+
+
+    t = time.time()
+
+    order_logger, portfolio_logger = run_backtest_compiled(
+        np.float64(initial_cash),
+        df.index.values.astype(np.int64),
+        df["open"].values.astype(np.float64),
+        df["high"].values.astype(np.float64),
+        df["low"].values.astype(np.float64),
+        df["enter_long"].values.astype(np.float64),
+        df["enter_short"].values.astype(np.float64),
+        df["close_long"].values.astype(np.float64),
+        df["close_short"].values.astype(np.float64),
+        df["bet"].values.astype(np.float64),
+        df["trade_cost"].values.astype(np.float64),
+        df["slippage"].values.astype(np.float64),
+        df["time_cut"].values.astype(np.float64),
+        df["stop_loss"].values.astype(np.float64),
+        df["take_profit"].values.astype(np.float64),
+        df["low_first"].values.astype(bool),
+        simple_interest
+    )
+
+    order_df = pd.DataFrame(order_logger, columns=["timestamp", "realized", "realized_percent", "prev_side", "desired_side", "hold_bars", "order_price"])
+    portfolio_df = pd.DataFrame(portfolio_logger,
+                                columns=["timestamp", "portfolio_value", "cash", "open", "entry_price",
+                                         "position_side", "position_size", "unrealized_pnl_percent"])
+    portfolio_df.index = pd.to_datetime(portfolio_df["timestamp"])
+
+    if log_time:
+        print(f"backtest completed in {time.time() - t} seconds")
+
+    return order_df, portfolio_df
 
 def strategy(fn):
     def wrapped(config, df):
