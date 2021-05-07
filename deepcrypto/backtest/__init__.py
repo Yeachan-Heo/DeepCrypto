@@ -338,10 +338,10 @@ def strategy(fn):
 
 
 def test_ma_crossover():
-    from deepcrypto.data_utils.crawlers.bitmex import load_bitmex_data
+    from deepcrypto.data_utils.crawlers.binance_crawler import read_binance_data
 
 
-    data = load_bitmex_data("/home/ych/Storage/bitmex/bitmex.db", "1H", "XBTUSD")
+    data = read_binance_data("/home/ych/Storage/binance/binance_new.db", "1H", "BTCUSDT")
 
     data = data.backtest.add_defaults()
 
@@ -350,23 +350,23 @@ def test_ma_crossover():
 
     data["vol_diff"] = data["volume"] / data["volume"].rolling(50).mean() > 5
 
-    data["enter_long"] = data["fastma"] > data["slowma"]
-    data["enter_short"] = data["slowma"] > data["fastma"]
+    data["enter_short"] = data["slowma"] < data["fastma"]
+    data["enter_long"] = data["slowma"] > data["fastma"]
 
     data["bet"] = 1
 
     data["trade_cost"] = 0.001
-    data["take_profit"] = 0.002
-    data["stop_loss"] = 0.001
+    #data["take_profit"] = 0.1
+    #data["stop_loss"] = 0.02
 
-    data["time_cut"] = TIMEFRAMES.DAY * 7
+    #data["time_cut"] = 24
 
-    data, order_df = data.backtest.run()
+    order_df, portfolio_df = data.backtest.run()
     order_df.to_csv("./order.csv")
 
     import quantstats as qs
 
-    qs.reports.html(data["portfolio_value"].resample("1D").last(), benchmark=data["open"].resample("1D").last(), output="./out.html")
+    qs.reports.html(portfolio_df["portfolio_value"].resample("1D").last(), benchmark=portfolio_df["open"].resample("1D").last(), output="./out.html")
 
 if __name__ == '__main__':
     for x in range(2):

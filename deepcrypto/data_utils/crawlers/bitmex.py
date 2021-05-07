@@ -171,6 +171,7 @@ def load_bitmex_data(db_path, timeframe, symbol):
         columns = ["timestamp", "open", "high", "low", "close", "volume", "lowFirst"]
         
     df = pd.DataFrame(db.execute(f"SELECT * FROM {symbol}_{timeframe}"), columns=columns)
+
     df.index = pd.to_datetime(df["timestamp"])
 
     return df

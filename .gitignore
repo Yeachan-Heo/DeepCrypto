@@ -1,0 +1,5 @@
+*.html
+*.csv
+*.json
+
+/research/
