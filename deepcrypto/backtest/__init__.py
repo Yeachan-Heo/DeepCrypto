@@ -86,14 +86,12 @@ def process_order(trade_cost, slippage, cash, entry_price, position_size, positi
 
     return realized, realized_percent, cash, entry_price, position_size, position_side
 
-## get_order, process_order 수
 
 @njit(cache=True)
 def update_portfolio_value(cash, entry_price, open, position_side, position_size):
-
     ret = cash + (open - entry_price) * position_side * position_size
-    #print(cash, ret, entry_price, open, position_side, position_size)
     return ret
+
 
 @njit(cache=True)
 def run_backtest_compiled(
@@ -170,7 +168,10 @@ def run_backtest_compiled(
         max_position_size = portfolio_value if not simple_interest else initial_cash
         order_size, order_side = get_order(bet, position_side, position_size, target_position, max_position_size, price)
 
+        realized = 1
+
         if position_side != target_position:
+
             temp = position_side
 
             cnt += 1
@@ -192,24 +193,25 @@ def run_backtest_compiled(
 
         unrealized_pnl_percent = (open/entry_price - 1) * position_side if position_side else 0
 
-        if position_side:
+        if position_size:
+
             take_profit_flag, stop_loss_flag = 0, 0
             time_cut_flag = (i - last_entry) >= time_cut
             # print(timestamp, last_entry, timestamp - last_entry, time_cut)
 
-            if low_first:
-                unrealized_pnl_percent = (low/entry_price - 1) * position_side
-                take_profit_flag = unrealized_pnl_percent >= take_profit
+            if not time_cut_flag:
+                unrealized_pnl_percent = ((low if position_side == 1 else high) / entry_price - 1) * position_side
                 stop_loss_flag = unrealized_pnl_percent <= -stop_loss
-                if stop_loss_flag or take_profit_flag:
-                    price=entry_price * (1 + position_side * (take_profit if take_profit_flag else -stop_loss))
-            else:
-                if (not take_profit_flag) and (not stop_loss_flag):
-                    unrealized_pnl_percent = (high / entry_price - 1) * position_side
+
+                if stop_loss_flag:
+                    price = entry_price * (1 + position_side * -stop_loss)
+
+                if not stop_loss_flag:
+                    unrealized_pnl_percent = ((high if position_side == 1 else low) / entry_price - 1) * position_side
                     take_profit_flag = unrealized_pnl_percent >= take_profit
-                    stop_loss_flag = unrealized_pnl_percent <= -stop_loss
-                    if stop_loss_flag or take_profit_flag:
-                        price=entry_price * (1 + position_side * (take_profit if take_profit_flag else -stop_loss))
+
+                    if take_profit_flag:
+                        price = entry_price * (1 + position_side * take_profit)
 
             if (time_cut_flag or stop_loss_flag or take_profit_flag):
                 if position_side == 1:
@@ -243,7 +245,8 @@ def run_backtest_compiled(
                 last_entry = np.inf
 
         portfolio_value = update_portfolio_value(cash, entry_price, open, position_side, position_size)
-        portfolio_value_logger.append((timestamp, portfolio_value, cash, open, entry_price, position_side, position_size, unrealized_pnl_percent))
+        portfolio_value_logger.append((
+            timestamp, portfolio_value, cash, open, entry_price, position_side, position_size, unrealized_pnl_percent))
 
 
     return order_logger, portfolio_value_logger
@@ -281,6 +284,7 @@ class BacktestAccessor:
 
     def __call__(self, *args, **kwargs):
         return self.run(*args, **kwargs)
+
 
 def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True):
 
@@ -329,6 +333,7 @@ def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True
 
     return order_df, portfolio_df
 
+
 def strategy(fn):
     def wrapped(config, df):
         df.backtest.add_defaults()
@@ -341,7 +346,7 @@ def test_ma_crossover():
     from deepcrypto.data_utils.crawlers.binance_crawler import read_binance_data
 
 
-    data = read_binance_data("/home/ych/Storage/binance/binance_new.db", "1H", "BTCUSDT")
+    data = read_binance_data("/home/ych/Storage/binance/binance.db", "1H", "BTCUSDT")
 
     data = data.backtest.add_defaults()
 
@@ -350,16 +355,16 @@ def test_ma_crossover():
 
     data["vol_diff"] = data["volume"] / data["volume"].rolling(50).mean() > 5
 
-    data["enter_short"] = data["slowma"] < data["fastma"]
+    # data["enter_short"] = data["slowma"] < data["fastma"]
     data["enter_long"] = data["slowma"] > data["fastma"]
 
     data["bet"] = 1
 
     data["trade_cost"] = 0.001
-    #data["take_profit"] = 0.1
-    #data["stop_loss"] = 0.02
+    data["take_profit"] = 0.1
+    data["stop_loss"] = 0.000000001
 
-    #data["time_cut"] = 24
+    data["time_cut"] = 24
 
     order_df, portfolio_df = data.backtest.run()
     order_df.to_csv("./order.csv")
@@ -367,6 +372,7 @@ def test_ma_crossover():
     import quantstats as qs
 
     qs.reports.html(portfolio_df["portfolio_value"].resample("1D").last(), benchmark=portfolio_df["open"].resample("1D").last(), output="./out.html")
+
 
 if __name__ == '__main__':
     for x in range(2):

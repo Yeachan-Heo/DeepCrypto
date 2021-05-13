@@ -6,7 +6,7 @@ import datetime
 import tqdm
 
 
-COLUMNS = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_av', 'trades', 'tb_base_av', 'tb_quote_av', 'ignore' ]
+COLUMNS = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_av', 'trades', 'tb_base_av', 'tb_quote_av', 'ignore']
 DEFAULT_START_DATE = "01 Jan 2017"
 
 
@@ -23,16 +23,30 @@ def download(client, ticker, from_date, to_date):
     df["timestamp"] *= 1000000
     df.index = pd.to_datetime(df["timestamp"])
 
+    print(df.head())
+    print(df["open"] == df["low"])
+
     return df
 
 
 def resample(df : pd.DataFrame, freq):
-    ohlc_df = df["close"].resample(freq).ohlc()
-    ohlc_df["open"] = df["open"].resample(freq).first()
-    volume_df = df[COLUMNS[5]].resample(freq).sum()
-    timestamp_df = pd.DataFrame(columns=["timestamp"], index=ohlc_df.index)
-    timestamp_df["timestamp"] = [x.timestamp() * 1000000 for x in ohlc_df.index]
-    df = pd.concat([timestamp_df, ohlc_df, volume_df], axis=1).ffill().dropna()
+    if freq == "1T":
+        return df
+
+    df_ohlcv = df[["open", "high", "low", "close", "volume"]]
+
+    logic = {'open': 'first',
+             'high': 'max',
+             'low': 'min',
+             'close': 'last',
+             'volume': 'sum'}
+
+    df_ohlcv = df_ohlcv.resample(freq).apply(logic)
+
+    df_timestamp = pd.DataFrame(columns=["timestamp"], index=df_ohlcv.index)
+    df_timestamp["timestamp"] = [x.timestamp() * 1000000 for x in df_ohlcv.index]
+    df = pd.concat([df_timestamp, df_ohlcv], axis=1).ffill().dropna()
+
     return df
 
 
@@ -100,6 +114,7 @@ def crawl(db_path, timeframes, tickers, reset_db, api_key, secret_key):
         for freq, df in df_dict.items():
             for row in df.values:
                 row = tuple(row)
+                print(row)
                 db.execute(f"INSERT INTO {ticker}_{freq} VALUES {row}")
             db.commit()
     db.close()
@@ -113,7 +128,7 @@ def read_binance_data(db_path, timeframe, ticker):
 
     data.columns = COLUMNS[:6]
     data.index = pd.to_datetime(data["timestamp"] * (1 if timeframe == "1T" else 1000))
-    data["open"] = data["low"].replace(0, np.nan).ffill()
+    data["open"] = data["open"].replace(0, np.nan).ffill()
     data["high"] = data["high"].replace(0, np.nan).ffill()
     data["low"] = data["low"].replace(0, np.nan).ffill()
     data["close"] = data["close"].replace(0, np.nan).ffill()
@@ -129,7 +144,7 @@ if __name__ == '__main__':
     parser.add_argument("--timeframes", type=list, default=["1T", "3T", "5T", "10T", "15T", "30T", "1H", "2H", "4H", "1D"])
 
     parser.add_argument("--db_path", help="path to sqlite3 database", type=str,
-                        default="/home/ych/Storage/binance/binance_new.db")
+                        default="/home/ych/Storage/binance/binance.db")
 
     parser.add_argument("--api_key", type=str, default="gXGFWdsBJy6QBu45lICDbfx3jYVpprAgi2tPU6KTYIQremIYFXgJAz6tYxrb3Wjn")
     parser.add_argument("--secret_key", type=str, default="xuCi2FwbBK4hzRRKaTSbktLUuCoU1cmoINsiu9Owwt910Lcpk7gBL3R4kmEsI2AQ")
@@ -139,25 +154,11 @@ if __name__ == '__main__':
         "BTCUSDT",
         "ETHUSDT",
         "XRPUSDT",
-        "DOGEUSDT",
         "BNBUSDT",
         "ADAUSDT",
         "DOTUSDT",
         "BCHUSDT",
         "LTCUSDT",
-        "VETUSDT",
-        "SOLUSDT",
-        "XLMUSDT",
-        "THETAUSDT",
-        "FILUSDT",
-        "TRXUSDT",
-        "NEOUSDT",
-        "XMRUSDT",
-        "LUNAUSDT",
-        "EOSUSDT",
-        "ETCUSDT",
-        "ATOMUSDT",
-        "XTZUSDT",
     ])
 
     args = parser.parse_args()
