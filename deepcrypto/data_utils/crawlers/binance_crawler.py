@@ -114,7 +114,7 @@ def crawl(db_path, timeframes, tickers, reset_db, api_key, secret_key):
         for freq, df in df_dict.items():
             for row in df.values:
                 row = tuple(row)
-                print(row)
+                # print(row)
                 db.execute(f"INSERT INTO {ticker}_{freq} VALUES {row}")
             db.commit()
     db.close()

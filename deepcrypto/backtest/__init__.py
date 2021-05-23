@@ -41,6 +41,7 @@ def order_logic(position_side, enter_long, enter_short, close_long, close_short)
         if close_short:
             return 0
         return -1
+        
 
 @njit(cache=True)
 def get_order(bet, position_side, position_size, target_position, portfolio_value, open):
@@ -240,7 +241,8 @@ def run_backtest_compiled(
                 #print(order_logger[-1])
 
             if (((not temp) and position_side) or (temp and (temp != position_side))):
-                last_entry = timestamp
+                last_entry = i
+
             elif not position_side:
                 last_entry = np.inf
 

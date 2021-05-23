@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/home/ych/anaconda3/envs/DeepCrypto/bin/jupyter", line 11, in <module>
+    sys.exit(main())
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jupyter_core/command.py", line 285, in main
+    command = _jupyter_abspath(subcommand)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jupyter_core/command.py", line 125, in _jupyter_abspath
+    'Jupyter command `{}` not found.'.format(jupyter_subcommand)
+Exception: Jupyter command `jupyter-lab` not found.
+[I 2021-05-14 02:19:11.953 ServerApp] jupyterlab | extension was successfully linked.
+[W 2021-05-14 02:19:11.962 NotebookApp] 'password' has moved from NotebookApp to ServerApp. This config will be passed to ServerApp. Be sure to update your config before our next release.
+[I 2021-05-14 02:19:11.975 ServerApp] Writing notebook server cookie secret to /home/ych/.local/share/jupyter/runtime/jupyter_cookie_secret
+[I 2021-05-14 02:19:12.532 ServerApp] nbclassic | extension was successfully linked.
+[I 2021-05-14 02:19:12.555 LabApp] JupyterLab extension loaded from /home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jupyterlab
+[I 2021-05-14 02:19:12.556 LabApp] JupyterLab application directory is /home/ych/anaconda3/envs/DeepCrypto/share/jupyter/lab
+[I 2021-05-14 02:19:12.561 ServerApp] jupyterlab | extension was successfully loaded.
+[I 2021-05-14 02:19:12.569 ServerApp] nbclassic | extension was successfully loaded.
+[I 2021-05-14 02:19:12.570 ServerApp] Serving notebooks from local directory: /home/ych/PycharmProjects/DeepCrypto/notebooks
+[I 2021-05-14 02:19:12.570 ServerApp] Jupyter Server 1.7.0 is running at:
+[I 2021-05-14 02:19:12.570 ServerApp] http://192.168.68.106:8888/lab
+[I 2021-05-14 02:19:12.570 ServerApp]     http://127.0.0.1:8888/lab
+[I 2021-05-14 02:19:12.570 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 2021-05-14 02:20:01.988 ServerApp] received signal 15, stopping
+[I 2021-05-14 02:20:01.990 ServerApp] Shutting down 0 kernels
+[I 2021-05-14 02:20:01.990 ServerApp] Shutting down 0 terminals

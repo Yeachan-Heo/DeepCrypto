@@ -33,7 +33,7 @@ class BinanceBroker(object):
         in_position = False
 
         self.client = Client(config["api_key"], config["api_secret"], tld='us')
-
+ 
 
     def order(self, side, quantity, symbol, order_type=ORDER_TYPE_MARKET):
         try:
