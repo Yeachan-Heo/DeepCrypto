@@ -1,24 +1,138 @@
+[I 2021-05-25 20:41:51.726 ServerApp] jupyterlab | extension was successfully linked.
+[W 2021-05-25 20:41:51.729 NotebookApp] 'password' has moved from NotebookApp to ServerApp. This config will be passed to ServerApp. Be sure to update your config before our next release.
+[I 2021-05-25 20:41:51.892 ServerApp] nbclassic | extension was successfully linked.
+[I 2021-05-25 20:41:51.910 LabApp] JupyterLab extension loaded from /home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jupyterlab
+[I 2021-05-25 20:41:51.910 LabApp] JupyterLab application directory is /home/ych/anaconda3/envs/DeepCrypto/share/jupyter/lab
+[I 2021-05-25 20:41:51.913 ServerApp] jupyterlab | extension was successfully loaded.
+[I 2021-05-25 20:41:51.917 ServerApp] nbclassic | extension was successfully loaded.
+[I 2021-05-25 20:41:51.917 ServerApp] Serving notebooks from local directory: /home/ych/PycharmProjects/DeepCrypto/notebooks
+[I 2021-05-25 20:41:51.917 ServerApp] Jupyter Server 1.7.0 is running at:
+[I 2021-05-25 20:41:51.917 ServerApp] http://192.168.68.106:8888/lab
+[I 2021-05-25 20:41:51.917 ServerApp]     http://127.0.0.1:8888/lab
+[I 2021-05-25 20:41:51.917 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[I 2021-05-25 20:42:04.073 LabApp] 302 GET /lab (192.168.68.101) 0.56ms
+[W 2021-05-25 20:42:04.369 ServerApp] 404 GET /apple-touch-icon-precomposed.png (192.168.68.101) 5.47ms referer=None
+[W 2021-05-25 20:42:04.374 ServerApp] 404 GET /apple-touch-icon.png (192.168.68.101) 0.78ms referer=None
+[I 2021-05-25 20:42:08.681 ServerApp] 302 POST /login?next=%2Flab (192.168.68.101) 19.39ms
+[W 2021-05-25 20:42:11.473 LabApp] Could not determine jupyterlab build status without nodejs
+[W 2021-05-25 20:42:12.236 ServerApp] Notebook entropy_strategy.ipynb is not trusted
+[I 2021-05-25 20:42:13.197 ServerApp] Kernel started: 9fec7953-9e9f-4f6c-8d81-956dbbdae748
+[I 2021-05-25 20:42:13.213 ServerApp] Kernel started: 2462ddca-af1d-4488-912f-da3d635a5cb7
+[I 2021-05-25 20:42:13.215 ServerApp] Kernel started: c1029308-3547-4058-8121-507e36b3c1a3
+[IPKernelApp] ERROR | Exception in message handler:
 Traceback (most recent call last):
-  File "/home/ych/anaconda3/envs/DeepCrypto/bin/jupyter", line 11, in <module>
-    sys.exit(main())
-  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jupyter_core/command.py", line 285, in main
-    command = _jupyter_abspath(subcommand)
-  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jupyter_core/command.py", line 125, in _jupyter_abspath
-    'Jupyter command `{}` not found.'.format(jupyter_subcommand)
-Exception: Jupyter command `jupyter-lab` not found.
-[I 2021-05-14 02:19:11.953 ServerApp] jupyterlab | extension was successfully linked.
-[W 2021-05-14 02:19:11.962 NotebookApp] 'password' has moved from NotebookApp to ServerApp. This config will be passed to ServerApp. Be sure to update your config before our next release.
-[I 2021-05-14 02:19:11.975 ServerApp] Writing notebook server cookie secret to /home/ych/.local/share/jupyter/runtime/jupyter_cookie_secret
-[I 2021-05-14 02:19:12.532 ServerApp] nbclassic | extension was successfully linked.
-[I 2021-05-14 02:19:12.555 LabApp] JupyterLab extension loaded from /home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jupyterlab
-[I 2021-05-14 02:19:12.556 LabApp] JupyterLab application directory is /home/ych/anaconda3/envs/DeepCrypto/share/jupyter/lab
-[I 2021-05-14 02:19:12.561 ServerApp] jupyterlab | extension was successfully loaded.
-[I 2021-05-14 02:19:12.569 ServerApp] nbclassic | extension was successfully loaded.
-[I 2021-05-14 02:19:12.570 ServerApp] Serving notebooks from local directory: /home/ych/PycharmProjects/DeepCrypto/notebooks
-[I 2021-05-14 02:19:12.570 ServerApp] Jupyter Server 1.7.0 is running at:
-[I 2021-05-14 02:19:12.570 ServerApp] http://192.168.68.106:8888/lab
-[I 2021-05-14 02:19:12.570 ServerApp]     http://127.0.0.1:8888/lab
-[I 2021-05-14 02:19:12.570 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
-[C 2021-05-14 02:20:01.988 ServerApp] received signal 15, stopping
-[I 2021-05-14 02:20:01.990 ServerApp] Shutting down 0 kernels
-[I 2021-05-14 02:20:01.990 ServerApp] Shutting down 0 terminals
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/cache.py", line 109, in wrapper
+    return dct[key]
+KeyError: ((), frozenset())
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 268, in dispatch_shell
+    yield gen.maybe_future(handler(stream, idents, msg))
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/tornado/gen.py", line 762, in run
+    value = future.result()
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/tornado/gen.py", line 234, in wrapper
+    yielded = ctx_run(next, result)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/ipykernel/kernelbase.py", line 583, in complete_request
+    matches = yield gen.maybe_future(self.do_complete(code, cursor_pos))
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/ipykernel/ipkernel.py", line 360, in do_complete
+    return self._experimental_do_complete(code, cursor_pos)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/ipykernel/ipkernel.py", line 385, in _experimental_do_complete
+    completions = list(_rectify_completions(code, raw_completions))
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/IPython/core/completer.py", line 492, in rectify_completions
+    completions = list(completions)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/IPython/core/completer.py", line 1837, in completions
+    for c in self._completions(text, offset, _timeout=self.jedi_compute_type_timeout/1000):
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/IPython/core/completer.py", line 1894, in _completions
+    signature = _make_signature(jm)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/IPython/core/completer.py", line 1001, in _make_signature
+    signatures = completion.get_signatures()
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/api/classes.py", line 572, in get_signatures
+    for s in self._get_signatures()
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/api/classes.py", line 561, in _get_signatures
+    return [sig for name in names for sig in name.infer().get_signatures()]
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/api/classes.py", line 561, in <listcomp>
+    return [sig for name in names for sig in name.infer().get_signatures()]
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/cache.py", line 111, in wrapper
+    result = method(self, *args, **kwargs)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/inference/compiled/mixed.py", line 129, in infer
+    return _create(self._inference_state, compiled_value, module_context)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/inference/cache.py", line 43, in wrapper
+    rv = function(obj, *args, **kwargs)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/inference/compiled/mixed.py", line 257, in _create
+    result = _find_syntax_node_name(inference_state, python_object)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/inference/compiled/mixed.py", line 237, in _find_syntax_node_name
+    code_lines = get_cached_code_lines(inference_state.grammar, path)
+  File "/home/ych/anaconda3/envs/DeepCrypto/lib/python3.7/site-packages/jedi/parser_utils.py", line 280, in get_cached_code_lines
+    return parser_cache[grammar._hashed][path].lines
+KeyError: '/home/ych/PycharmProjects/DeepCrypto/deepcrypto/data_utils/crawlers/bitfinex_kaggle.py'
+[I 2021-05-25 20:44:12.753 ServerApp] Saving file at /Untitled.ipynb
+[I 2021-05-25 20:46:12.907 ServerApp] Saving file at /Untitled.ipynb
+[I 2021-05-25 20:48:13.053 ServerApp] Saving file at /Untitled.ipynb
+[I 2021-05-25 20:50:13.176 ServerApp] Saving file at /Untitled.ipynb
+[I 2021-05-25 20:52:13.260 ServerApp] Saving file at /Untitled.ipynb
+[I 2021-05-25 20:53:22.431 ServerApp] Creating new notebook in 
+[I 2021-05-25 20:53:24.653 ServerApp] Kernel started: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 20:54:13.433 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 20:55:22.590 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 20:57:22.648 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 20:59:22.701 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:01:22.751 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:03:22.882 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:05:23.017 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:07:23.173 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:09:23.344 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:11:23.483 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:13:23.624 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:15:23.757 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:17:23.913 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:19:24.062 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:21:24.228 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:23:24.386 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:25:24.554 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:27:24.703 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:35:24.876 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:37:24.959 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:39:25.074 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:41:25.203 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:43:25.334 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 21:52:29.517 ServerApp] 302 GET / (162.142.125.40) 0.34ms
+[I 2021-05-25 21:52:29.871 ServerApp] 302 GET / (162.142.125.40) 0.29ms
+[I 2021-05-25 21:52:30.212 LabApp] 302 GET /lab (162.142.125.40) 0.44ms
+[I 2021-05-25 22:15:29.839 ServerApp] Saving file at /VBAlpha.ipynb
+[W 2021-05-25 22:17:08.320 ServerApp] 404 GET http://www.baidu.com/cache/global/img/gs.gif (185.216.140.186) 0.83ms referer=None
+[I 2021-05-25 22:17:29.958 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:19:30.006 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:21:30.106 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:21:30.293 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:23:30.240 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:25:30.381 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:27:30.611 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:27:42.248 ServerApp] Kernel interrupted: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 22:27:42.431 ServerApp] Kernel interrupted: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 22:27:42.596 ServerApp] Kernel interrupted: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 22:27:42.796 ServerApp] Kernel interrupted: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 22:27:43.405 ServerApp] Kernel interrupted: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 22:27:43.630 ServerApp] Kernel interrupted: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 22:27:43.831 ServerApp] Kernel interrupted: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 22:27:53.707 ServerApp] Kernel restarted: 2eb77607-23e0-475e-82f9-cad7da265c30
+[I 2021-05-25 22:27:53.815 ServerApp] Starting buffering for 2eb77607-23e0-475e-82f9-cad7da265c30:29b2761c-96b1-46ea-b216-b545e58f3979
+[I 2021-05-25 22:27:53.827 ServerApp] Restoring connection for 2eb77607-23e0-475e-82f9-cad7da265c30:29b2761c-96b1-46ea-b216-b545e58f3979
+[I 2021-05-25 22:29:30.845 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:31:31.132 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:33:31.330 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:35:32.062 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:37:32.294 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:39:30.562 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:41:30.764 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:45:31.014 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:47:31.318 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:49:31.651 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:51:32.487 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:53:32.458 ServerApp] Saving file at /VBAlpha.ipynb
+[I 2021-05-25 22:53:33.272 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:57:33.530 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 22:59:33.746 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 23:01:34.064 ServerApp] Saving file at /volume_breakout.ipynb
+[I 2021-05-25 23:03:34.762 ServerApp] Saving file at /volume_breakout.ipynb

@@ -1,3 +1,4 @@
+from deepcrypto.backtest import *
 import quantstats as qs
 import os, json
 
@@ -40,8 +41,9 @@ def save_results(cfg, strategy, df, save_dir, save_name):
     if not os.path.exists(sdir):
         os.makedirs(sdir)
 
-    portf_df, order_df = strategy(cfg, df).backtest.run()
-    metrics = all_metrics(portf_df, order_df)
+    df = df.backtest.add_defaults()
+    order_df, portf_df = strategy(cfg, df).backtest.run()
+    metrics = all_metrics(portf_df.resample("1D").last(), order_df)
 
     with open(os.path.join(sdir, "config.json"), "w") as f:
         f.write(json.dumps(cfg))
