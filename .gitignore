@@ -3,3 +3,4 @@
 *.json
 
 /research/
+/notebooks/ray_results
