@@ -31,13 +31,13 @@ class OptimizerBase:
         self.process_queue = []
         self.cnt = -1
 
-    def sugesstion_logic(self, config, result) -> tuple:
+    def sample(self) -> tuple:
         """
         returns new_config, done
         """
         raise NotImplementedError
 
-    def suggest_next(self, config, result, cnt, suggest=False):
+    def save_result(self, config, result, cnt):
         if ((not config is None) and (not result is None)):
             dict_ = dict()
             
@@ -49,10 +49,8 @@ class OptimizerBase:
         
         self.cnt += 1
 
-        if not suggest:
-            return
-        
-        return self.suggestion_logic(config, result)
+    def update(self, config, result) -> None:
+        return
         
     def optimize(self):
         config, result, done = None, None, False
@@ -72,12 +70,14 @@ class OptimizerBase:
 
                 if len(self.process_queue) > self.n_cores:
                     result, config, cnt = ray.get(self.process_queue[-1])
+                    self.update(config, result)
                     self.process_queue = self.process_queue[:-1]
 
                     if done:
                         for p in self.process_queue:
                             result, config, cnt = ray.get(p)
-                            self.suggest_next(config, result, cnt, suggest=False)
+                            self.save_results(config, result, cnt)
+                            
             
             if done: break
         
@@ -98,6 +98,6 @@ class BruteForceOptimizer(OptimizerBase):
         self.grid_length = len(self.grid) - 1
         self.total_steps = ((self.grid_length + 1) // self.n_cores) + 1
     
-    def sugesstion_logic(self, config, result) -> tuple:
+    def sample(self) -> tuple:
         return self.grid[self.cnt], self.cnt >= self.grid_length
         
