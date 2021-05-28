@@ -1,0 +1,3 @@
+[console_scripts]
+backtest = deepcrypto.ui.cli:main
+
