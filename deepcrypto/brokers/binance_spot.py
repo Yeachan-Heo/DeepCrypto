@@ -4,10 +4,14 @@ from binance.client import Client
 from binance.enums import *
 from deepcrypto.brokers import *
 
-class BinanceBroker(BrokerBase):
+class BinanceSpotBroker(BrokerBase):
     ORDER_TYPE_DICT = {
-        OrderTypes.LIMIT_BUY : Client.ORDER_TYPE_LIMIT,
-        OrderTypes.LIMIT_ : Client.ORDER_TYPE_STOP_LOSS,
+        OrderTypes.LIMIT : Client.ORDER_TYPE_LIMIT,
+        OrderTypes.MARKET : Client.ORDER_TYPE_MARKET,
+        OrderTypes.MARKET_SL : Client.ORDER_TYPE_STOP_LOSS,
+        OrderTypes.MARKET_TP : Client.ORDER_TYPE_TAKE_PROFIT,
+        OrderTypes.LIMIT_SL : Client.ORDER_TYPE_STOP_LOSS_LIMIT,
+        OrderTypes.LIMIT_TP : Client.ORDER_TYPE_TAKE_PROFIT_LIMIT
     }
 
     INTERVAL2MINUTE = {
@@ -28,10 +32,11 @@ class BinanceBroker(BrokerBase):
     }
 
     def __init__(self, api_key, api_secret, testnet=False, **kwargs):
-        self.binance_client = Client(api_key, api_secret)
+        self.binance_client = Client(api_key, api_secret, testnet=testnet)
         self.symbol = self.ticker.replace("/", "")
         self.trade_asset, self.balance_asset = self.ticker.split("/")
-        super(BinanceBroker, self).__init__(**kwargs)
+        self.n_bars_from_last_order = 0
+        super(BinanceSpotBroker, self).__init__(**kwargs)
         
     
     def init_data(self) -> pd.DataFrame:
@@ -42,35 +47,36 @@ class BinanceBroker(BrokerBase):
         return data
 
     def update_new_data_stream(self) -> Tuple[pd.DataFrame, bool]:
-        data = self.binance_client.get_klines(self.symbol, self.timeframe, limit=2)
+        data = self.binance_client.get_klines(symbol=self.symbol, interval=self.timeframe, limit=2)
         closed=False
         if data[0][0] != self.data["time"].iloc[-1]:
             closed = True
             new_data_stream = pd.DataFrame(
-                [data[0]], 
+                [np.array(data[0][:6], dtype=np.float32)], 
                 columns=["time", "open", "high", "low", "close", "volume"], 
                 index=[pd.to_datetime(data[0][0] * 1000000)]
             )
             self.data = self.data.iloc[1:].append(new_data_stream)
         return closed
 
-    def order(self, quantity, type, price, **kwargs):
-        raise NotImplementedError
+    def order(self, quantity, order_type, side, price, **kwargs):
+        self.binance_client.create_order(
+            symbol=self.symbol,
+            type=self.ORDER_TYPE_DICT[order_type],
+            side=SIDE_SELL if side == OrderSides.SELL else SIDE_BUY,
+            quantity=quantity,
+            price=price,
+            stop_price=price
+        )
 
     def cancel_all_orders(self):
-        raise NotImplementedError
+        self.binance_client.cancel_order(symbol=self.symbol)
 
     def update_account_info(self):
-        raise NotImplementedError
-
-    def get_position_size(self):
-        raise NotImplementedError
-
-    def get_position_side(self):
-        raise NotImplementedError
+        cash_left = self.binance_client.get_asset_balance(asset=self.balance_asset)
+        position_size = self.binance_client.get_asset_balance(asset=self.trade_asset) 
+        position_side = np.sign(position_size)
+        return cash_left + position_size * self.price, cash_left, position_size, position_side
 
     def get_current_price(self):
-        raise NotImplementedError
-
-    def get_cash_left(self):
-        raise NotImplementedError
+        return float(self.binance_client.get_recent_trades(symbol=self.symbol, limit=1)[0]["price"])
