@@ -1,29 +1,36 @@
 import pandas as pd
 import numpy as np
-import sqlite3
+import ccxt
+
+import websocket, os, sqlite3
 
 from typing import *
 from deepcrypto.backtest import *
 
 
 class OrderTypes:
-    MARKET = 0
+    MARKET = "MARKET"
 
-    LIMIT = 0
+    LIMIT = "LIMIT"
     
-    MARKET_SL = 4
-    LIMIT_SL = 5
+    MARKET_SL = "STOP_MARKET"
+    LIMIT_SL = "STOP_LOSS_LIMIT"
 
-    MARKET_TP = 6
-    LIMIT_TP = 7
+    MARKET_TP = "TAKE_PROFIT_MARKET"
+    LIMIT_TP = "TAKE_PROFIT_LIMIT"
     
+
 class OrderSides:
     BUY = 1
     SELL = -1
 
-class BrokerBase():
+
+class CCXTWebsocketBrokerBase():
     def __init__(self, ticker, timeframe, strategy, config, n_bars, market_order=True, time_cut_market=True, stop_loss_market=True, take_profit_market=False, log_db_path="./log.sqlite3"):
         self.ticker = ticker
+        self.trade_asset, self.balance_asset = ticker.split("/")
+        self.symbol = ticker.replace("/", "")
+
         self.timeframe = timeframe
         self.strategy = strategy
         self.config = config
@@ -55,47 +62,42 @@ class BrokerBase():
 
         self.n_bars_from_last_trade = 0 
 
-    def init_data(self) -> pd.DataFrame:
+    def add_to_data(self, ohlcv):
+        self.data = self.data.append(pd.DataFrame(ohlcv, [ohlcv["time"]]))
+
+    def preprocess_msg(self, msg):
+        ohlcv = {
+            "time" : 0,
+            "open" : 0,
+            "high" : 0,
+            "low" : 0,
+            "close" : 0,
+            "volume" : 0
+         } 
+        closed = False
+        return ohlcv, closed
+
+    def fetch_balance(self, asset):
         raise NotImplementedError
 
-    def update_new_data_stream(self) -> Tuple[pd.DataFrame, bool]:
-        """
-        return new data stream as pandas dataframe, and return the bar is closed or not
-        """
+    def fetch_position(self):
         raise NotImplementedError
+        # return position_size, position_side
 
-    def order(self, quantity, type, side, price, **kwargs):
+    def get_portfolio_value(self):
+
+        cashleft = self.fetch_balance(self.balance_asset)
+        position_size, position_side = self.fetch_position()
+        
+        self.portfolio_value, self.price, self.cash_left, self.position_size, self.position_side = \
+             self.data.iloc[-1]["close"] * position_size + cashleft, self.data.iloc[-1]["close"], cashleft, position_size, position_side
+    
+
+    def order(self, quantity, type, side, price):
         raise NotImplementedError
 
     def cancel_all_orders(self):
         raise NotImplementedError
-
-    def update_account_info(self):
-        raise NotImplementedError
-
-    def get_position_size(self):
-        raise NotImplementedError
-
-    def get_position_side(self):
-        raise NotImplementedError
-
-    def get_current_price(self):
-        raise NotImplementedError
-
-    def get_cash_left(self):
-        raise NotImplementedError
-
-    def get_portfolio_value(self):
-        self.update_account_info()
-
-        cprice = self.get_current_price()
-        cashleft = self.get_cash_left()
-        position_size = self.get_position_size()
-        position_side = self.get_position_side()
-        
-        self.portfolio_value, self.price, self.cash_left, self.position_size, self.position_side = \
-             cprice * position_size + cashleft, cprice, cashleft, position_size, position_side
-        
 
     def trade_step(self):
         res = self.strategy(self.data, self.config).iloc[-1]
@@ -105,7 +107,7 @@ class BrokerBase():
 
         if ((self.n_bars_from_last_trade >= res["time_cut"]) & self.position_side):
             self.order(
-                -self.position_side * self.position_size,
+                self.position_size,
                 OrderTypes.LIMIT if not self.time_cut_market else OrderTypes.MARKET,
                 -self.position_side,
                 self.price
@@ -132,32 +134,13 @@ class BrokerBase():
                 if not res["take_profit"] != np.inf:
                     order_type = OrderTypes.MARKET_TP if self.stop_loss_market else OrderTypes.LIMIT_TP
                     self.order(order_size, order_type, order_side, (self.price * (1 + res["take_profit"] * target_pos)))
+
+
+    def on_message(self, msg):
+        ohlcv, closed = self.preprocess_msg(msg)
+        
+        if closed:
+            self.add_to_data(ohlcv)
+            self.trade_step()
             
 
-    def main(self):
-        closed = self.update_new_data_stream()
-        self.price = self.get_current_price()
-        self.portfolio_value, self.cash_left, self.position_size, self.position_side = self.update_account_info()
-        
-        self.log_db.execute(
-            f"""
-            INSERT INTO LOG VALUES (
-                {self.portfolio_value},
-                {self.price},
-                {self.cash_left},
-                {self.position_size},
-                {self.position_side}
-            )
-            """
-        )
-        self.log_db.commit()
-
-        if closed:
-            self.trade_step()
-        
-
-
-    
-        
-
-    

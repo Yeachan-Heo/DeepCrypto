@@ -33,14 +33,20 @@ class BinanceSpotBroker(BrokerBase):
 
     def __init__(self, api_key, api_secret, testnet=False, **kwargs):
         self.binance_client = Client(api_key, api_secret, testnet=testnet)
+        
+        super(BinanceSpotBroker, self).__init__(**kwargs)
+
         self.symbol = self.ticker.replace("/", "")
         self.trade_asset, self.balance_asset = self.ticker.split("/")
         self.n_bars_from_last_order = 0
-        super(BinanceSpotBroker, self).__init__(**kwargs)
+        
         
     
     def init_data(self) -> pd.DataFrame:
-        data = self.binance_client.get_historical_klines(f"{self.n_bars * self.INTERVAL2MINUTE[self.timeframe]} minutes ago UTC")
+        data = self.binance_client.get_historical_klines(
+            self.ticker.replace("/", ""), 
+            self.timeframe,
+            f"{self.n_bars * self.INTERVAL2MINUTE[self.timeframe]} minutes ago UTC")
         data = np.array(data[:-1], dtype=np.float32)[:, :6]
         data = pd.DataFrame(data, columns=["time", "open", "high", "low", "close", "volume"])
         data.index = pd.to_datetime(data["time"]*1000000)
@@ -75,7 +81,9 @@ class BinanceSpotBroker(BrokerBase):
     def update_account_info(self):
         cash_left = self.binance_client.get_asset_balance(asset=self.balance_asset)
         position_size = self.binance_client.get_asset_balance(asset=self.trade_asset) 
-        position_side = np.sign(position_size)
+        position_size = position_size if position_size is not None else 0
+        position_side = np.sign(position_size) if position_size is not None else 0
+        
         return cash_left + position_size * self.price, cash_left, position_size, position_side
 
     def get_current_price(self):
