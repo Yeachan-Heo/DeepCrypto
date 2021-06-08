@@ -33,7 +33,7 @@ class BinanceFuturesBroker(WebsocketBrokerBase):
 
 
     def init_data(self) -> pd.DataFrame:
-        data = self.exchange.fetch_ohlcv(symbol=self.ticker, timeframe="1m", limit=self.n_bars)
+        data = self.exchange.fetch_ohlcv(symbol=self.ticker, timeframe=self.timeframe, limit=self.n_bars)
         data = data[:-1]
         data = pd.DataFrame(data, columns=["time", "open", "high", "low", "close", "volume"])
         data["time"] = data["time"] * 1000000
