@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
-import ccxt
-
+import datetime
 import websocket, os, sqlite3
 
 from typing import *
@@ -14,10 +13,10 @@ class OrderTypes:
     LIMIT = "LIMIT"
     
     MARKET_SL = "STOP_MARKET"
-    LIMIT_SL = "STOP_LOSS_LIMIT"
+    LIMIT_SL = "STOP"
 
     MARKET_TP = "TAKE_PROFIT_MARKET"
-    LIMIT_TP = "TAKE_PROFIT_LIMIT"
+    LIMIT_TP = "TAKE_PROFIT"
     
 
 class OrderSides:
@@ -25,8 +24,8 @@ class OrderSides:
     SELL = -1
 
 
-class CCXTWebsocketBrokerBase():
-    def __init__(self, ticker, timeframe, strategy, config, n_bars, market_order=True, time_cut_market=True, stop_loss_market=True, take_profit_market=False, log_db_path="./log.sqlite3"):
+class WebsocketBrokerBase():
+    def __init__(self, ticker, timeframe, strategy, strategy_name, config, n_bars, market_order=True, time_cut_market=True, stop_loss_market=True, take_profit_market=True, log_db_dir="./deepcrypto_logs"):
         self.ticker = ticker
         self.trade_asset, self.balance_asset = ticker.split("/")
         self.symbol = ticker.replace("/", "")
@@ -37,33 +36,63 @@ class CCXTWebsocketBrokerBase():
         self.n_bars = n_bars
         self.market_order = market_order
 
-        self.data = self.init_data()
-
-        self.position_side = 0
-
-        flag = os.path.exists(log_db_path)
-        self.log_db = sqlite3.connect(log_db_path)
-
         self.stop_loss_market = stop_loss_market
         self.take_profit_market = take_profit_market
         self.time_cut_market = time_cut_market
 
-        if not flag:
-            self.log_db.execute(
-                """CREATE TABLE LOG (
-                    timestamp int,
-                    portfolio_value float,
-                    price float,
-                    cash_left float,
-                    position_size float,
-                    position_side int
-                )""")
-            self.log_db.commit()
+        self.url = None
 
-        self.n_bars_from_last_trade = 0 
+        self.last_entry = np.inf
+
+        self.data = self.init_data()
+
+        self.index = 0
+
+        if not os.path.exists(log_db_dir):
+            os.makedirs(log_db_dir)
+
+        log_db_path = os.path.join(log_db_dir, strategy_name + ".sqlite3")
+        self.log_db = sqlite3.connect(log_db_path)
+
+        self.log_db.execute(
+            """CREATE TABLE IF NOT EXISTS PERFORMANCE (
+                timestamp float,
+                portfolio_value float,
+                price float,
+                cash_left float,
+                position_size float,
+                position_side int
+            )""")
+
+        self.log_db.execute(
+            """CREATE TABLE IF NOT EXISTS ORDERS (
+                timestamp float,
+                type text,
+                message text,
+                side text,
+                quantity float,
+                price float
+            )
+            """
+        )
+
+        self.log_db.execute(
+            """CREATE TABLE IF NOT EXISTS ERRORS (
+                timestamp float,
+                error text
+            )
+            """
+        )
+
+        self.log_db.commit()
+
+        self.n_bars_from_last_trade = -1
+
+    def init_data(self) -> pd.DataFrame:
+        raise NotImplementedError
 
     def add_to_data(self, ohlcv):
-        self.data = self.data.append(pd.DataFrame(ohlcv, [ohlcv["time"]]))
+        self.data = self.data.iloc[1:].append(pd.DataFrame(ohlcv, index=[pd.to_datetime(ohlcv["time"])]))
 
     def preprocess_msg(self, msg):
         ohlcv = {
@@ -84,7 +113,7 @@ class CCXTWebsocketBrokerBase():
         raise NotImplementedError
         # return position_size, position_side
 
-    def get_portfolio_value(self):
+    def update_account_info(self):
 
         cashleft = self.fetch_balance(self.balance_asset)
         position_size, position_side = self.fetch_position()
@@ -100,47 +129,85 @@ class CCXTWebsocketBrokerBase():
         raise NotImplementedError
 
     def trade_step(self):
-        res = self.strategy(self.data, self.config).iloc[-1]
-        target_pos = order_logic(self.position_side, res["enter_long"], res["enter_short"], res["close_long"], res["close_short"])
         
-        self.n_bars_from_last_trade += 1
+        res = self.strategy(self.data.backtest.add_defaults(), self.config).iloc[-1]
 
-        if ((self.n_bars_from_last_trade >= res["time_cut"]) & self.position_side):
+        target_pos = order_logic(int(self.position_side), bool(res["enter_long"]), bool(res["enter_short"]), res["close_long"], res["close_short"])
+        target_pos = int(target_pos)
+
+        if target_pos != self.position_side:
+            target_amount = target_pos * res["bet"] * self.portfolio_value / self.price
+            order_amount = target_amount - self.position_size * self.position_side
+            order_size, order_side = np.abs(order_amount), np.sign(order_amount)
+
+            self.cancel_all_orders()
+            self.order(
+                order_size, 
+                OrderTypes.LIMIT if not self.market_order else OrderTypes.MARKET, 
+                order_side, 
+                self.price,
+                message="LOGIC"
+            )
+            self.last_entry = np.inf if target_pos == 0 else self.index
+
+            if not target_pos == 0:
+                order_size = abs(target_amount)
+                order_side = -order_side
+
+                if str(res["stop_loss"]) != "inf":
+                    order_type = OrderTypes.MARKET_SL if self.stop_loss_market else OrderTypes.LIMIT_SL
+                    self.order(order_size, order_type, order_side, (self.price * (1 - res["stop_loss"] * target_pos)), message="STOP")
+
+                if str(res["take_profit"]) != "inf":
+                    order_type = OrderTypes.MARKET_TP if self.stop_loss_market else OrderTypes.LIMIT_TP
+                    self.order(order_size, order_type, order_side, (self.price * (1 + res["take_profit"] * target_pos)), message="TAKE_PROFIT")
+         
+        if (((self.index - self.last_entry) >= res["time_cut"]) & (self.position_side != 0)):
+            self.cancel_all_orders()
+
             self.order(
                 self.position_size,
                 OrderTypes.LIMIT if not self.time_cut_market else OrderTypes.MARKET,
                 -self.position_side,
-                self.price
+                self.price,
+                message="TIME_CUT"
             )
 
-        if target_pos != self.position_side:
-            
-            target_amount = res["bet"] * self.portfolio_value / self.price - self.position_size * self.position_side
-            order_size, order_side = np.abs(target_amount), np.sign(target_amount)
-            
-            self.cancel_all_orders()
-            
-            self.order(order_size, OrderTypes.LIMIT if not self.market_order else OrderTypes.MARKET, order_side, self.price)
-            self.n_bars_from_last_trade = 0
-
-            if not target_pos == 0:
-                order_size = target_amount
-                order_side = -order_side
-
-                if not res["stop_loss"] != np.inf:
-                    order_type = OrderTypes.MARKET_SL if self.stop_loss_market else OrderTypes.LIMIT_SL
-                    self.order(order_size, order_type, order_side, (self.price * (1 - res["stop_loss"] * target_pos)))
-                
-                if not res["take_profit"] != np.inf:
-                    order_type = OrderTypes.MARKET_TP if self.stop_loss_market else OrderTypes.LIMIT_TP
-                    self.order(order_size, order_type, order_side, (self.price * (1 + res["take_profit"] * target_pos)))
-
+        self.index += 1
 
     def on_message(self, msg):
-        ohlcv, closed = self.preprocess_msg(msg)
-        
-        if closed:
-            self.add_to_data(ohlcv)
-            self.trade_step()
+        try:
+            ohlcv, closed = self.preprocess_msg(msg)
+
+            if closed:
+                self.update_account_info()
+                self.add_to_data(ohlcv)
+                self.log_db.execute(
+                    f"""
+                    INSERT INTO PERFORMANCE VALUES (
+                        {datetime.datetime.now().timestamp()},
+                        {self.portfolio_value},
+                        {self.price},
+                        {self.cash_left},
+                        {self.position_size},
+                        {int(self.position_side)}
+                    )
+                    """
+                )
+                self.log_db.commit()
+                self.trade_step()
+        except Exception as e:
+            print(e)
+            self.log_db.execute(f"""
+                INSERT INTO ERRORS VALUES (
+                    {datetime.datetime.now().timestamp()},
+                    '{e}'
+                )
+            """)
+            self.log_db.commit()
+
+    def trade(self):
+        self.ws_app = websocket.WebSocketApp(self.url, on_message=lambda ws, msg: self.on_message(msg), on_open=lambda x: print("START TRADER"), on_close=lambda x: print("CLOSE TRADER"), on_error=lambda x: print(x))
+        return self.ws_app.run_forever()
             
 

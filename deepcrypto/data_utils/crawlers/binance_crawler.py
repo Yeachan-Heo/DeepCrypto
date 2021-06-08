@@ -146,10 +146,10 @@ if __name__ == '__main__':
     parser.add_argument("--db_path", help="path to sqlite3 database", type=str,
                         default="/home/ych/Storage/binance/binance.db")
 
-    parser.add_argument("--api_key", type=str, default="gXGFWdsBJy6QBu45lICDbfx3jYVpprAgi2tPU6KTYIQremIYFXgJAz6tYxrb3Wjn")
-    parser.add_argument("--secret_key", type=str, default="xuCi2FwbBK4hzRRKaTSbktLUuCoU1cmoINsiu9Owwt910Lcpk7gBL3R4kmEsI2AQ")
+    parser.add_argument("--api_key", type=str, default="j4rMKJGa52baR3mSHVmHXoFrhd7s956V50AJuTPuzlWyZXMGn0DXT7hRKheEmdZb")
+    parser.add_argument("--secret_key", type=str, default="kLesW58csuaJnuZSshPkWBoyRF5PVf5ZixIzw65pMW7chm8WLI6U6698xxY3B2dA")
 
-    parser.add_argument("--reset_db", type=bool, default=True)
+    parser.add_argument("--reset_db", type=bool, default=False)
     parser.add_argument("--tickers", type=list, default=[
         "BTCUSDT",
         "ETHUSDT",
@@ -159,6 +159,7 @@ if __name__ == '__main__':
         "DOTUSDT",
         "BCHUSDT",
         "LTCUSDT",
+        "DOGEUSDT"
     ])
 
     args = parser.parse_args()

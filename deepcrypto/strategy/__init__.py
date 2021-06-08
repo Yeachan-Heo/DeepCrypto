@@ -8,3 +8,6 @@ class Strategy(object):
     def __call__(self, df: pd.DataFrame) -> pd.DataFrame:
         raise NotImplementedError
 
+    def backtest(self, df, **kwargs):
+        df = self(df)
+
