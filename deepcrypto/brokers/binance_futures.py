@@ -15,7 +15,7 @@ class BinanceFuturesBroker(WebsocketBrokerBase):
                 "defaultType" : "future",
             },
         })
-        
+
         if not contract_type in ["perpetual", "current_quarter", "next_quarter"]:
             raise ValueError("invalid contract type")
 
@@ -55,6 +55,7 @@ class BinanceFuturesBroker(WebsocketBrokerBase):
 
     def update_account_info(self):
         account_info = self.exchange.fetch_balance()
+
         cashleft = account_info["total"][self.balance_asset]
         position = list(filter(lambda x: x["symbol"] == self.symbol, account_info["info"]["positions"]))[0]
         unrealized = float(position["unrealizedProfit"])

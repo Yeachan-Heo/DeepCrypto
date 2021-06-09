@@ -329,6 +329,7 @@ def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True
                                 columns=["timestamp", "portfolio_value", "cash", "open", "entry_price",
                                          "position_side", "position_size", "unrealized_pnl_percent"])
     portfolio_df.index = pd.to_datetime(portfolio_df["timestamp"])
+    order_df.index = pd.to_datetime(order_df["timestamp"])
 
     if log_time:
         print(f"backtest completed in {time.time() - t} seconds")
