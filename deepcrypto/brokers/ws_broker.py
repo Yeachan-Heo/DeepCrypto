@@ -67,6 +67,7 @@ class WebsocketBrokerBase():
         self.log_db.execute(
             """CREATE TABLE IF NOT EXISTS ORDERS (
                 timestamp float,
+                ticker text,
                 type text,
                 message text,
                 side text,

@@ -26,10 +26,7 @@ class BinanceFuturesBroker(WebsocketBrokerBase):
         self.trade_asset, self.balance_asset = self.ticker.split("/")
         self.n_bars_from_last_order = 0
 
-        self.exchange.fapiPrivate_post_leverage({
-            "symbol": self.symbol, 
-            "leverage": leverage
-        })
+        self.leverage = leverage
 
 
     def init_data(self) -> pd.DataFrame:
@@ -67,11 +64,17 @@ class BinanceFuturesBroker(WebsocketBrokerBase):
              cashleft + unrealized, self.data.iloc[-1]["close"], cashleft, abs(position_size), position_side
 
     def order(self, quantity, order_type, side, price, message, **kwargs):
+        self.exchange.fapiPrivate_post_leverage({
+            "symbol": self.symbol, 
+            "leverage": self.leverage
+        })
+
         params = {}
         self.log_db.execute(
             f"""
             INSERT INTO ORDERS VALUES (
                 {datetime.datetime.now().timestamp()},
+                '{self.ticker}'
                 '{order_type}',
                 '{message}',
                 '{"SELL" if int(side) < 0 else "BUY"}',
