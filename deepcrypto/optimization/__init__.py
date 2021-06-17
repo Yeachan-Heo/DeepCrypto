@@ -136,7 +136,7 @@ class BruteForceOptimizer(OptimizerBase):
             return None, True
 
 
-def do_forward_testing(data, optimizer_cls, n_chunks=4, best_metric_name="metric", mode_max=False, **kwargs):
+def do_forward_testing(data, optimizer_cls, n_chunks=4, best_metric_name="metric", mode_max=True, **kwargs):
     data_chunk_len = len(data.index) // n_chunks
     
     order_df_lst, port_df_lst = [], []
@@ -169,7 +169,7 @@ def do_forward_testing(data, optimizer_cls, n_chunks=4, best_metric_name="metric
         return_arr = return_arr[~return_arr.index.duplicated()]
         return_arr = return_arr.sort_index()
 
-    return return_arr, best_config, order_df_lst, port_df_lst
+    return return_arr, best_config, order_df_lst, port_df_lst, optim.result_df
 
 
 def test():
