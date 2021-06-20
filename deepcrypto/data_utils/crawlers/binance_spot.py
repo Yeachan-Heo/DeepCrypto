@@ -19,6 +19,8 @@ def download_binance_futures_data(db_path="/home/ych/Storage/binance/binance_fut
     # 그렇지 않다면 입력으로 받은 문자열을 파싱
     else:
         symbols = symbols.split(",")
+    
+    symbols = list(filter(lambda x: "USDT" in x, symbols))
 
     # 심볼 개수와 심볼 전체 프린트
     print(f"downloading data for {len(symbols)} symbols : {symbols}")
@@ -165,7 +167,7 @@ if __name__ == "__main__":
     parser.add_argument("--db_path", default="/home/ych/Storage/binance/binance_spot.db", type=str)
     
     # argument #2 symbols: "all"로 설정 시 모든 티커 다운로드, 혹은 ,를 구분자로 하여 스트링으로 입력 가능
-    parser.add_argument("--symbols", default='all', type=str)
+    parser.add_argument("--symbols", default='BTC/USDT,ETH/USDT,BNB/USDT,XRP/USDT,ADA/USDT,BCH/USDT,SOL/USDT,DOGE/USDT,DOT/USDT,LTC/USDT', type=str)
     
     # 익스포트할 경로, 디렉토리까지만 써 주면 된다. (써져 있으면 익스포트 모드로 동작한다)
     parser.add_argument("--export_dir", default=None, type=str)

@@ -1,11 +1,15 @@
 from deepcrypto.backtest import *
+from quantstats.stats import *
 import quantstats as qs
+import matplotlib.pyplot as plt
+
 import os, json
 
 def _calc_from_order_df(order_df, label="bothside"):
     a = {}
     a[f"{label}_win_rate"] = order_df.realized[order_df.realized >= 0].count()/order_df.realized.count() * 100
     a[f"{label}_profit_factor"] = -order_df.realized[order_df.realized >= 0].mean()/order_df.realized[order_df.realized < 0].mean()
+    a[f"{label}_tpi"] = a[f"{label}_win_rate"] * (1 + a[f"{label}_profit_factor"])
     a[f"{label}_total_profit"] = order_df.realized.sum()
     a[f"{label}_avg_holding_bars"] = order_df.hold_bars.mean()
     a[f"{label}_total_trades"] = len(order_df.index)
@@ -33,6 +37,17 @@ def all_metrics(portfolio_df, order_df):
     ret.update(metric_from_quantstats(portfolio_df["portfolio_value"]))
     ret.update(calc_from_order_df(order_df))
     return ret
+
+
+def plot_signals(data, order, n=10):
+    plt.figure(figsize=(30, 10))
+    order = order.copy()
+    order["Date"] = order.index
+    order = order[data.index[-n]:data.index[-1]]
+    plt.plot(data.open[-n:])
+    plt.scatter(order.loc[order['desired_side'] ==1 , 'Date'].values,order.loc[order['desired_side'] ==1, 'order_price'].values, label='skitscat', color='green', s=100, marker="^")
+    plt.scatter(order.loc[order['desired_side'] ==0 , 'Date'].values,order.loc[order['desired_side'] ==0, 'order_price'].values, label='skitscat', color='black', s=100, marker="X")
+    plt.scatter(order.loc[order['desired_side'] ==-1 , 'Date'].values,order.loc[order['desired_side'] ==-1, 'order_price'].values, label='skitscat', color='red', s=100, marker="v")
 
 
 def save_results(cfg, strategy, df, save_dir, save_name):

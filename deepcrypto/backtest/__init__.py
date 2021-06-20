@@ -78,13 +78,6 @@ def process_order(trade_cost, slippage, cash, entry_price, position_size, positi
     if not position_side:
         entry_price = 0
 
-
-    #if realized:
-        #print(f"realized : {realized}")
-        #print(cash)
-
-        #print("realized :{} \nrealized_percent: {}\n cash: {}\n entry_price:{} \nposition_size:{}\n position_side:{}\n\n".format(realized, realized_percent, cash, entry_price, position_size, position_side))
-
     return realized, realized_percent, cash, entry_price, position_size, position_side
 
 
@@ -344,6 +337,29 @@ def strategy(fn):
         return df
     return wrapped
 
+
+def do_multi_ticker_backtest(strategy, data_dict, config, log_time=False, simple_interest=False):
+    result_dict = {ticker : strategy(df, config).backtest(log_time=log_time, simple_interest=simple_interest) for ticker, df in data_dict.items()}
+    order_df_lst = [v[0] for v in result_dict.values()]
+    portfolio_df_lst = [v[1] for v in result_dict.values()]
+    
+    index_len = np.inf
+    index = None
+    
+    for port_df in portfolio_df_lst:
+        if len(port_df.index) < index_len:
+            index_len = len(port_df.index)
+            index = port_df.index
+
+    portfolio_seq = portfolio_df_lst[0].portfolio_value.reindex(index)
+    portfolio_seq /= portfolio_seq.iloc[0]
+
+    for port_df in portfolio_df_lst[1:]:
+        pfseq = port_df.portfolio_value.reindex(index)
+        portfolio_seq += (pfseq / pfseq.iloc[0])
+    
+    return portfolio_seq, pd.concat(order_df_lst), result_dict
+    
 
 def test_ma_crossover():
     from deepcrypto.data_utils.crawlers.binance_crawler import read_binance_data
