@@ -23,6 +23,7 @@ if __name__ == "__main__":
     import deepcrypto.strategy.utils as utils
 
     NAME = "{args.name}"
+    DIRECTORY = "{args.strategy_dir}"
 
     def strategy(df, config):
         df["enter_long"] = (
@@ -65,7 +66,7 @@ if __name__ == "__main__":
 
 
     from deepcrypto.optimization import do_forward_testing, BruteForceOptimizer
-    from .strategy import strategy, NAME
+    from .strategy import strategy, NAME, DIRECTORY
 
 
     def load_data():
@@ -95,10 +96,6 @@ if __name__ == "__main__":
             n_cores = psutil.cpu_count()
         )
 
-
-    def save_results(df, return_arr, best_config, order_df_lst, port_df_lst):
-        # NotImplementedError
-        return
 
     if __name__ == "__main__":
         df = load_data()

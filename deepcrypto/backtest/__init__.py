@@ -5,10 +5,6 @@ import pandas as pd
 import time
 import os
 
-class TIMEFRAMES:
-    MINUTE = 86400000000000 / 24 / 60
-    HOUR = 86400000000000 / 24
-    DAY = HOUR * 24
 
 @njit(cache=True)
 def order_logic(position_side, enter_long, enter_short, close_long, close_short):
@@ -104,7 +100,6 @@ def run_backtest_compiled(
         time_cut_seq,
         stop_loss_seq,
         take_profit_seq,
-        low_first_seq,
         simple_interest=False):
 
     portfolio_value_logger = []
@@ -136,8 +131,7 @@ def run_backtest_compiled(
         slippage, \
         time_cut, \
         stop_loss, \
-        take_profit, \
-        low_first = (
+        take_profit, = (
             timestamp_seq[i],
             open_seq[i],
             high_seq[i],
@@ -152,7 +146,6 @@ def run_backtest_compiled(
             time_cut_seq[i],
             stop_loss_seq[i],
             take_profit_seq[i],
-            low_first_seq[i]
         )
         price=open
 
@@ -176,7 +169,6 @@ def run_backtest_compiled(
             hold_bars = i - last_entry if realized else 0
 
             order_logger.append((timestamp, realized, realized_percent, temp, target_position, hold_bars, price))
-                #print(order_logger[-1])
 
             if (((not temp) and position_side) or (temp and (temp != position_side))):
                 last_entry = i
@@ -191,7 +183,6 @@ def run_backtest_compiled(
 
             take_profit_flag, stop_loss_flag = 0, 0
             time_cut_flag = (i - last_entry) >= time_cut
-            # print(timestamp, last_entry, timestamp - last_entry, time_cut)
 
             if not time_cut_flag:
                 unrealized_pnl_percent = ((low if position_side == 1 else high) / entry_price - 1) * position_side
@@ -213,7 +204,6 @@ def run_backtest_compiled(
                 elif position_side == -1:
                     close_short = 1
                 cnt += 1
-                # print("open", cnt, time_cut_flag, stop_loss_flag, take_profit_flag)
 
         target_position = order_logic(
             position_side, enter_long, enter_short, close_long, close_short)
@@ -268,9 +258,6 @@ class BacktestAccessor:
         df["trade_cost"] = 0
         df["slippage"] = 0
 
-        if not "low_first" in df.columns:
-            df["low_first"] = 1
-
         return df
 
     def run(self, initial_cash=10000, simple_interest=False, log_time=True):
@@ -313,7 +300,6 @@ def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True
         df["time_cut"].values.astype(np.float64),
         df["stop_loss"].values.astype(np.float64),
         df["take_profit"].values.astype(np.float64),
-        df["low_first"].values.astype(bool),
         simple_interest
     )
 
