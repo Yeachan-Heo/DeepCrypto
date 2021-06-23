@@ -11,22 +11,15 @@ def _calc_from_order_df(order_df, label="bothside"):
     
     a[f"{label}_avg_profit"] = order_df.realized[order_df.realized > 0].mean()
     a[f"{label}_avg_loss"] = -order_df.realized[order_df.realized < 0].mean()
-
-    a[f"{label}_avg_profit_percent"] = order_df.realized_percent[order_df.realized_percent > 0].mean()
-    a[f"{label}_avg_loss_percent"] = -order_df.realized_percent[order_df.realized_percent < 0].mean()
-    
     
     a[f"{label}_total_profit"] = order_df.realized[order_df.realized > 0].sum()
     a[f"{label}_total_loss"] = -order_df.realized[order_df.realized < 0].sum()
     a[f"{label}_total_pnl"] = order_df.realized.sum()
 
-
     a[f"{label}_profit_factor"] = a[f"{label}_total_profit"] / a[f"{label}_total_loss"]
-    a[f"{label}_avg_profit_factor"] = a[f"{label}_avg_profit_percent"] / a[f"{label}_avg_loss_percent"]
+    a[f"{label}_avg_profit_factor"] = a[f"{label}_avg_profit"] / a[f"{label}_avg_loss"]
     
-    a[f"{label}_tpi"] = a[f"{label}_win_rate"] * (1 + a[f"{label}_profit_factor"])
-    
-
+    a[f"{label}_tpi"] = a[f"{label}_win_rate"] * (1 + a[f"{label}_avg_profit_factor"]) / 100
 
     a[f"{label}_avg_holding_bars"] = order_df.hold_bars.mean()
     a[f"{label}_total_trades"] = len(order_df.index)

@@ -1,10 +1,9 @@
-from setuptools import setup
-
+from setuptools import setup, find_packages
 setup(
     name='DeepCrypto',
     version='',
-    packages=['deepcrypto', 'deepcrypto.backtest', 'deepcrypto.data_utils', 'deepcrypto.data_utils.crawlers',
-              'deepcrypto.portfolio_analysis', 'deepcrypto.ui.cli', 'deepcrypto.ui.gui', "deepcrypto.optimization"],
+    packages= find_packages(), #['deepcrypto', 'deepcrypto.backtest', 'deepcrypto.data_utils', 'deepcrypto.data_utils.crawlers',
+              #'deepcrypto.portfolio_analysis', 'deepcrypto.ui.cli', 'deepcrypto.ui.gui', "deepcrypto.optimization"],
     url='',
     license='',
     author='ych',
