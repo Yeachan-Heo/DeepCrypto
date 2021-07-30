@@ -1,15 +1,29 @@
 import pandas as pd
 
+
 def make_periodic_indicator_fn(indicator_fn, freq="1D"):
     def wrapped(inp):
-        x = inp.resample(freq).aggregate({"open" : "first", "high" : "max", "low" : "min", "close" : "last", "volume" : "sum"})
-        indicator = pd.Series(indicator_fn(x), index=x.index).shift(1)[inp.index.floor(freq)]
+        x = inp.resample(freq).aggregate(
+            {
+                "open": "first",
+                "high": "max",
+                "low": "min",
+                "close": "last",
+                "volume": "sum",
+            }
+        )
+        indicator = pd.Series(indicator_fn(x), index=x.index).shift(1)[
+            inp.index.floor(freq)
+        ]
         indicator.index = inp.index
         return indicator.values
+
     return wrapped
+
 
 def make_periodic_indicator(indicator_fn, freq, df):
     return make_periodic_indicator_fn(indicator_fn, freq)(df)
+
 
 def add_new_timeframe(df, freq):
     df_ = df[["open", "high", "low", "close"]]

@@ -1,25 +1,26 @@
-
+from collections import OrderedDict
 import ccxt, sqlite3, argparse, time, os
 import pandas as pd
+import multiprocessing
+import psutil
+import tqdm
 
 
-def download_binance_futures_data(market, db_path="/home/ych/Storage/binance/binance_futures.db", symbols="all"):
+def download_binance_data(
+    market, db_path="/home/ych/Storage/binance/binance_futures.db", symbols="all"
+):
     # DB 초기화
     db = sqlite3.connect(db_path)
 
     # CCXT binance 거래소: 선물을 기본으로 함
     binance = ccxt.binance(
-        {
-            "options" : {
-                "defaultType" : market
-            },
-            "enableRateLimit" : True
-        }
+        {"options": {"defaultType": market}, "enableRateLimit": True}
     )
-    
+
     # symbols == "all" 이라면 모든 티커 다운로드
+    all_symbols = [mkt["symbol"] for mkt in binance.fetch_markets()]
     if symbols == "all":
-        symbols = [mkt["symbol"] for mkt in binance.fetch_markets()]
+        symbols = all_symbols
     # 그렇지 않다면 입력으로 받은 문자열을 파싱
     else:
         symbols = symbols.split(",")
@@ -28,8 +29,12 @@ def download_binance_futures_data(market, db_path="/home/ych/Storage/binance/bin
     print(f"downloading data for {len(symbols)} symbols : {symbols}")
 
     for symbol in symbols:
+        if not symbol in all_symbols:
+            print(f"{symbol} not exists. skipping...")
+            continue
         # 테이블 없다면 DB 만들기
-        db.execute(f"""
+        db.execute(
+            f"""
         CREATE TABLE IF NOT EXISTS _{symbol.replace("/", "")} (
             timestamp int, 
             open float, 
@@ -37,7 +42,8 @@ def download_binance_futures_data(market, db_path="/home/ych/Storage/binance/bin
             low float, 
             close float, 
             volume float
-        )""")
+        )"""
+        )
         # 시간 로깅 용
         t = time.time()
 
@@ -48,45 +54,58 @@ def download_binance_futures_data(market, db_path="/home/ych/Storage/binance/bin
 
         # 이전 데이터 존재 여부 확인
         # startTime 옵션을 >=로 비교하여 가져오므로 1을 더해준다
-        timestamp = 0 if not prev_data else prev_data[-1][0] + 1 
-        downloaded = 0 # 로깅용
+        timestamp = 0 if not prev_data else prev_data[-1][0] + 1
+        downloaded = 0  # 로깅용
+
+        data = []
 
         while True:
             # 바이낸스에서 1분봉 받아오기
             tohlcv = binance.fetch_ohlcv(
-                symbol=symbol, 
-                timeframe="1m", 
-                params={"startTime" : timestamp}, 
-                limit=1500
+                symbol=symbol,
+                timeframe="1m",
+                params={"startTime": timestamp},
+                limit=1500,
             )
-            
+
             # 1분봉이 없다면 -> 타임스탬프가 현재 시점(최신)이므로 루프를 끝냄
             if not tohlcv:
                 break
-            
-            # db에 저장
-            for timestamp, open, high, low, close, volume in tohlcv:
-                db.execute(f"""
-                INSERT INTO _{symbol.replace('/', '')} VALUES (
-                    {timestamp}, {open}, {high}, {low}, {close}, {volume}
-                )""")
-            
-            # db에 commit
-            db.commit()
+
+            # # db에 저장
+            # for timestamp, open, high, low, close, volume in tohlcv:
+            #     db.execute(f"""
+            #     INSERT INTO _{symbol.replace('/', '')} VALUES (
+            #         {timestamp}, {open}, {high}, {low}, {close}, {volume}
+            #     )""")
+
+            data.extend(tohlcv)
 
             # startTime 옵션을 >=로 비교하여 가져오므로 1을 더해준다
             timestamp = tohlcv[-1][0] + 1
 
             # 다운로드된 양
             downloaded += len(tohlcv)
-            
+
             # 현재 지난 시간
             delta_t = time.time() - t
-            
-            # 로깅
-            print(f"""downloaded {downloaded} rows for {symbol} in {round(delta_t)} seconds, download speed is {round(downloaded / delta_t)} row per second""", end="\r")
-        print(f"""downloaded {downloaded} rows for {symbol} in {round(delta_t)} seconds, download speed is {round(downloaded / delta_t)} row per second""")
 
+            # 로깅
+            print(
+                f"""downloaded {downloaded} rows for {symbol} in {round(delta_t, 3)} seconds, download speed is {round(downloaded / delta_t, 3)} row per second""",
+                end="\r",
+            )
+        print(
+            f"""downloaded {downloaded} rows for {symbol} in {round(delta_t, 3)} seconds, download speed is {round(downloaded / delta_t, 3)} row per second"""
+        )
+
+        for timestamp, open, high, low, close, volume in data[:-1]:
+            db.execute(
+                f"""
+            INSERT INTO _{symbol.replace('/', '')} VALUES (
+               {timestamp}, {open}, {high}, {low}, {close}, {volume}
+            )"""
+            )
         db.commit()
 
 
@@ -99,14 +118,15 @@ def read_binance_data(db_path, symbol, timeframe):
 
     # fetchall() 메서드 사용해서 DB에서 데이터 받아오기
     data = db.execute(f"SELECT * FROM _{symbol}").fetchall()
-    
+
     # DB에서 받아온 데이터로 pd.DataFrame 만들기
     data = pd.DataFrame(
-        data, columns=["timestamp", "open", "high", "low", "close", "volume"])
+        data, columns=["timestamp", "open", "high", "low", "close", "volume"]
+    )
 
     # pd.to_datetime은 second보다 더 작은 precision을 지원하므로 1000000을 곱해주어야 정확한 결과가 나오게 됨
     data.index = pd.to_datetime(data["timestamp"] * 1000000)
-    
+
     # timestamp column은 필요가 없으므로 삭제함
     del data["timestamp"]
 
@@ -114,30 +134,62 @@ def read_binance_data(db_path, symbol, timeframe):
     if timeframe != "1T":
         data = data.resample(timeframe).agg(
             {
-                "open" : "first",
-                "high" : "max",
-                "low" : "min",
-                "close" : "last",
-                "volume" : "sum"
+                "open": "first",
+                "high": "max",
+                "low": "min",
+                "close": "last",
+                "volume": "sum",
             }
         )
-        data = data.ffill() # missing data 제거 (binance 서버 터짐 등)
-    
+        data = data.ffill()  # missing data 제거 (binance 서버 터짐 등)
+
     return data
+
+
+def _read_binance_data(args):
+    return read_binance_data(*args)
+
+
+def read_multiple_data(db_path, symbols, timeframe):
+    args_lst = [(db_path, symbol, timeframe) for symbol in symbols]
+    pool = multiprocessing.Pool(psutil.cpu_count())
+    return dict(zip(symbols, pool.map(_read_binance_data, args_lst)))
+
+
+def get_longest_index(df_lst):
+    temp = 0
+    index = None
+
+    for df in df_lst:
+        if len(df.index) > temp:
+            temp = len(df.index)
+            index = df.index
+
+    return index
+
+
+def read_data_dict(db_path, symbols, timeframe):
+    data_dict = OrderedDict(read_multiple_data(db_path, symbols, timeframe))
+    index = get_longest_index(data_dict.values())
+
+    cols = ["open", "high", "low", "close", "volume"]
+
+    df_dict = {col: pd.DataFrame(columns=data_dict.keys(), index=index) for col in cols}
+
+    for ticker, df in data_dict.items():
+        for col, df_ret in df_dict.items():
+            df_ret[ticker] = df[col]
+
+    return df_dict
 
 
 def export_data(db_path, symbols, timeframes, export_dir):
     timeframes = timeframes.split(",")
-    
+
     # 심볼 정하기: 다운로드 코드와 같음
     if symbols == "all":
         binance = ccxt.binance(
-            {
-                "options" : {
-                    "defaultType" : "future"
-                },
-                "enableRateLimit" : True
-            }
+            {"options": {"defaultType": "future"}, "enableRateLimit": True}
         )
         symbols = [mkt["symbol"] for mkt in binance.fetch_markets()]
 
@@ -146,15 +198,15 @@ def export_data(db_path, symbols, timeframes, export_dir):
 
     # 익스포팅 루프
     for symbol in symbols:
-        for timeframe in timeframes:    
+        for timeframe in timeframes:
             # 데이터 가져오기
             df = read_binance_data(db_path)
-            
+
             # export path: export_dir/symbol_timeframe.csv
             export_path = os.path.join(export_dir, f"{symbol}_{timeframe}.csv")
-            
+
             # csv로 내보내기
-            df.to_csv(export_path) 
+            df.to_csv(export_path)
 
             print(f"exported data to {export_path}")
 
@@ -162,18 +214,23 @@ def export_data(db_path, symbols, timeframes, export_dir):
 if __name__ == "__main__":
     # cli 인터페이스
 
-    # argparse 
+    # argparse
     parser = argparse.ArgumentParser()
-    
+
     # argument #0 market "spot" or "future"
     parser.add_argument("--market", default="future", type=str)
 
     # argument #1 db_path: 데이터베이스 경로
-    parser.add_argument("--db_path", default="/home/ych/Storage/binance/binance_futures.db", type=str)
-    
+    parser.add_argument(
+        "--db_path",
+        default="/home/ych/Storage/binance/binance_futures_new.db",
+        type=str,
+    )
+
     # argument #2 symbols: "all"로 설정 시 모든 티커 다운로드, 혹은 ,를 구분자로 하여 스트링으로 입력 가능
-    parser.add_argument("--symbols", default='all', type=str)
-    
+    DEFAULT_TICKERS = "BTC/USDT,ETH/USDT,XRP/USDT,BNB/USDT,ADA/USDT,DOGE/USDT,DOT/USDT,UNI/USDT,BCH/USDT,LTC/USDT,SOL/USDT,LINK/USDT,MATIC/USDT,ETC/USDT,THETA/USDT,XLM/USDT,ICP/USDT,VET/USDT,NEO/USDT,FIL/USDT,TRX/USDT,XMR/USDT,EOS/USDT,AAVE/USDT"
+    parser.add_argument("--symbols", default=DEFAULT_TICKERS, type=str)
+
     # 익스포트할 경로, 디렉토리까지만 써 주면 된다. (써져 있으면 익스포트 모드로 동작한다)
     parser.add_argument("--export_dir", default=None, type=str)
 
@@ -182,13 +239,19 @@ if __name__ == "__main__":
 
     # 파싱
     args = parser.parse_args()
-    
+
     if not args.market in ["future", "spot"]:
         raise ValueError(f"market should be 'spot' or 'future', got {args.market}")
-        
+
     # 다운로드 함수 실행 (다운로드 모드)
     if args.export_dir is None:
-        download_binance_futures_data(args.market, args.db_path, args.symbols)
+        download_binance_data(args.market, args.db_path, args.symbols)
     # 익스포트 함수 실행 (익스포트 모드)
     else:
-        export_data(args.market, args.db_path, args.symbols, args.export_timeframes, args.export_dir)
+        export_data(
+            args.market,
+            args.db_path,
+            args.symbols,
+            args.export_timeframes,
+            args.export_dir,
+        )

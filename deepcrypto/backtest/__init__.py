@@ -37,10 +37,12 @@ def order_logic(position_side, enter_long, enter_short, close_long, close_short)
         if close_short:
             return 0
         return -1
-        
+
 
 @njit(cache=True)
-def get_order(bet, position_side, position_size, target_position, portfolio_value, open):
+def get_order(
+    bet, position_side, position_size, target_position, portfolio_value, open
+):
     target_amount = bet * portfolio_value / open
     order = target_amount * target_position - position_side * position_size
     order_size = np.abs(order)
@@ -49,23 +51,35 @@ def get_order(bet, position_side, position_size, target_position, portfolio_valu
 
 
 @njit(cache=True)
-def process_order(trade_cost, slippage, cash, entry_price, position_size, position_side, order_size, order_side, open):
+def process_order(
+    trade_cost,
+    slippage,
+    cash,
+    entry_price,
+    position_size,
+    position_side,
+    order_size,
+    order_side,
+    open,
+):
     open = (1 + slippage * order_side) * open
 
-
-    realized, realized_percent = 0., 0.
+    realized, realized_percent = 0.0, 0.0
 
     if position_side == order_side:
-        entry_price = (entry_price * position_size + order_size * open) / (position_size + order_size)
+        entry_price = (entry_price * position_size + order_size * open) / (
+            position_size + order_size
+        )
     else:
         if order_size > position_size:
             realized = (open - entry_price) * position_side * position_size
             entry_price = open
         else:
             realized = (open - entry_price) * position_side * order_size
-        realized_percent  = (open / entry_price - 1) * position_side
+        realized_percent = (open / entry_price - 1) * position_side
 
-    cash -= trade_cost * order_size * open
+    fee = trade_cost * order_size * open
+    cash -= fee
     cash += realized
     position = position_side * position_size + order_size * order_side
 
@@ -74,7 +88,16 @@ def process_order(trade_cost, slippage, cash, entry_price, position_size, positi
     if not position_side:
         entry_price = 0
 
-    return realized, realized_percent, cash, entry_price, position_size, position_side
+    return (
+        realized,
+        realized_percent,
+        cash,
+        entry_price,
+        position_size,
+        position_side,
+        fee,
+        open,
+    )
 
 
 @njit(cache=True)
@@ -85,22 +108,23 @@ def update_portfolio_value(cash, entry_price, open, position_side, position_size
 
 @njit(cache=True)
 def run_backtest_compiled(
-        initial_cash,
-        timestamp_seq,
-        open_seq,
-        high_seq,
-        low_seq,
-        enter_long_seq,
-        enter_short_seq,
-        close_long_seq,
-        close_short_seq,
-        bet_seq,
-        trade_cost_seq,
-        slippage_seq,
-        time_cut_seq,
-        stop_loss_seq,
-        take_profit_seq,
-        simple_interest=False):
+    initial_cash,
+    timestamp_seq,
+    open_seq,
+    high_seq,
+    low_seq,
+    enter_long_seq,
+    enter_short_seq,
+    close_long_seq,
+    close_short_seq,
+    bet_seq,
+    trade_cost_seq,
+    slippage_seq,
+    time_cut_seq,
+    stop_loss_seq,
+    take_profit_seq,
+    simple_interest=False,
+):
 
     portfolio_value_logger = []
     order_logger = []
@@ -113,25 +137,29 @@ def run_backtest_compiled(
     cash = initial_cash
     open = 0
 
-    portfolio_value = update_portfolio_value(cash, entry_price, open, position_side, position_size)
+    portfolio_value = update_portfolio_value(
+        cash, entry_price, open, position_side, position_size
+    )
 
     last_entry = np.inf
-    cnt = 0
+
     for i, timestamp in enumerate(timestamp_seq):
-        timestamp, \
-        open, \
-        high, \
-        low, \
-        enter_long, \
-        enter_short, \
-        close_long, \
-        close_short, \
-        bet, \
-        trade_cost, \
-        slippage, \
-        time_cut, \
-        stop_loss, \
-        take_profit, = (
+        (
+            timestamp,
+            open,
+            high,
+            low,
+            enter_long,
+            enter_short,
+            close_long,
+            close_short,
+            bet,
+            trade_cost,
+            slippage,
+            time_cut,
+            stop_loss,
+            take_profit,
+        ) = (
             timestamp_seq[i],
             open_seq[i],
             high_seq[i],
@@ -147,37 +175,68 @@ def run_backtest_compiled(
             stop_loss_seq[i],
             take_profit_seq[i],
         )
-        price=open
+        price = open
 
         target_position = order_logic(
-            position_side, enter_long, enter_short, close_long, close_short)
+            position_side, enter_long, enter_short, close_long, close_short
+        )
 
         max_position_size = portfolio_value if not simple_interest else initial_cash
-        order_size, order_side = get_order(bet, position_side, position_size, target_position, max_position_size, price)
-
-        realized = 1
+        order_size, order_side = get_order(
+            bet, position_side, position_size, target_position, max_position_size, price
+        )
 
         if position_side != target_position:
 
             temp = position_side
 
-            cnt += 1
-
-            realized, realized_percent, cash, entry_price, position_size, position_side = process_order(
-                trade_cost, slippage, cash, entry_price, position_size, position_side, order_size, order_side, price)
+            (
+                realized,
+                realized_percent,
+                cash,
+                entry_price,
+                position_size,
+                position_side,
+                fee,
+                price,
+            ) = process_order(
+                trade_cost,
+                slippage,
+                cash,
+                entry_price,
+                position_size,
+                position_side,
+                order_size,
+                order_side,
+                price,
+            )
 
             hold_bars = i - last_entry if realized else 0
 
-            order_logger.append((timestamp, realized, realized_percent, temp, target_position, hold_bars, price))
+            order_logger.append(
+                (
+                    timestamp,
+                    realized,
+                    fee,
+                    "LC",
+                    realized_percent,
+                    temp,
+                    target_position,
+                    hold_bars,
+                    price,
+                )
+            )
 
-            if (((not temp) and position_side) or (temp and (temp != position_side))):
+            if ((not temp) and position_side) or (temp and (temp != position_side)):
                 last_entry = i
+                sl_val, tp_val = stop_loss, take_profit
 
             elif not position_side:
                 last_entry = np.inf
 
-
-        unrealized_pnl_percent = (open/entry_price - 1) * position_side if position_side else 0
+        unrealized_pnl_percent = (
+            (open / entry_price - 1) * position_side if position_side else 0
+        )
 
         if position_size:
 
@@ -185,54 +244,120 @@ def run_backtest_compiled(
             time_cut_flag = (i - last_entry) >= time_cut
 
             if not time_cut_flag:
-                unrealized_pnl_percent = ((low if position_side == 1 else high) / entry_price - 1) * position_side
-                stop_loss_flag = unrealized_pnl_percent <= -stop_loss
+                unrealized_pnl_percent = (
+                    (low if position_side == 1 else high) / entry_price - 1
+                ) * position_side
+                stop_loss_flag = unrealized_pnl_percent <= -sl_val
 
                 if stop_loss_flag:
-                    price = entry_price * (1 + position_side * -stop_loss)
+                    price = entry_price * (1 + position_side * -sl_val)
 
                 if not stop_loss_flag:
-                    unrealized_pnl_percent = ((high if position_side == 1 else low) / entry_price - 1) * position_side
-                    take_profit_flag = unrealized_pnl_percent >= take_profit
+                    unrealized_pnl_percent = (
+                        (high if position_side == 1 else low) / entry_price - 1
+                    ) * position_side
+                    take_profit_flag = unrealized_pnl_percent >= tp_val
 
                     if take_profit_flag:
-                        price = entry_price * (1 + position_side * take_profit)
+                        price = entry_price * (1 + position_side * tp_val)
 
-            if (time_cut_flag or stop_loss_flag or take_profit_flag):
+            if time_cut_flag or stop_loss_flag or take_profit_flag:
                 if position_side == 1:
                     close_long = 1
                 elif position_side == -1:
                     close_short = 1
-                cnt += 1
 
         target_position = order_logic(
-            position_side, enter_long, enter_short, close_long, close_short)
+            position_side, enter_long, enter_short, close_long, close_short
+        )
 
-        order_size, order_side = get_order(bet, position_side, position_size, target_position, portfolio_value, price)
+        order_size, order_side = get_order(
+            bet, position_side, position_size, target_position, portfolio_value, price
+        )
 
         if position_side != target_position:
             temp = position_side
 
-            cnt += 1
-
-            realized, realized_percent, cash, entry_price, position_size, position_side = process_order(
-                trade_cost, slippage, cash, entry_price, position_size, position_side, order_size, order_side, price)
+            (
+                realized,
+                realized_percent,
+                cash,
+                entry_price,
+                position_size,
+                position_side,
+                fee,
+                price,
+            ) = process_order(
+                trade_cost,
+                slippage,
+                cash,
+                entry_price,
+                position_size,
+                position_side,
+                order_size,
+                order_side,
+                price,
+            )
 
             hold_bars = i - last_entry if realized else 0
 
-            order_logger.append((timestamp, realized, realized_percent, temp, target_position, hold_bars, price))
-                #print(order_logger[-1])
+            reason = "TC" if time_cut_flag else "SL" if stop_loss_flag else "TP"
 
-            if (((not temp) and position_side) or (temp and (temp != position_side))):
+            order_logger.append(
+                (
+                    timestamp,
+                    realized,
+                    fee,
+                    reason,
+                    realized_percent,
+                    temp,
+                    target_position,
+                    hold_bars,
+                    price,
+                )
+            )
+
+            if ((not temp) and position_side) or (temp and (temp != position_side)):
+                last_entry = i
+                sl_val, tp_val = stop_loss, take_profit
+
+            elif not position_side:
+                last_entry = np.inf
+
+            order_logger.append(
+                (
+                    timestamp,
+                    realized,
+                    fee,
+                    realized_percent,
+                    temp,
+                    target_position,
+                    hold_bars,
+                    price,
+                )
+            )
+
+            if ((not temp) and position_side) or (temp and (temp != position_side)):
                 last_entry = i
 
             elif not position_side:
                 last_entry = np.inf
 
-        portfolio_value = update_portfolio_value(cash, entry_price, open, position_side, position_size)
-        portfolio_value_logger.append((
-            timestamp, portfolio_value, cash, open, entry_price, position_side, position_size, unrealized_pnl_percent))
-
+        portfolio_value = update_portfolio_value(
+            cash, entry_price, open, position_side, position_size
+        )
+        portfolio_value_logger.append(
+            (
+                timestamp,
+                portfolio_value,
+                cash,
+                open,
+                entry_price,
+                position_side,
+                position_size,
+                unrealized_pnl_percent,
+            )
+        )
 
     return order_logger, portfolio_value_logger
 
@@ -268,6 +393,13 @@ class BacktestAccessor:
         return self.run(*args, **kwargs)
 
 
+class BacktestResults:
+    def __init__(self, order_df, portfolio_df, simple_interest):
+        self.order_df = order_df
+        self.portfolio_df = portfolio_df
+        self.simple_interest = simple_interest
+
+
 def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True):
 
     df["enter_long"] = df["enter_long"].shift(1)
@@ -280,7 +412,6 @@ def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True
     df["time_cut"] = df["time_cut"].shift(1)
 
     df = df.ffill().dropna()
-
 
     t = time.time()
 
@@ -300,38 +431,69 @@ def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True
         df["time_cut"].values.astype(np.float64),
         df["stop_loss"].values.astype(np.float64),
         df["take_profit"].values.astype(np.float64),
-        simple_interest
+        simple_interest,
     )
 
-    order_df = pd.DataFrame(order_logger, columns=["timestamp", "realized", "realized_percent", "prev_side", "desired_side", "hold_bars", "order_price"])
-    portfolio_df = pd.DataFrame(portfolio_logger,
-                                columns=["timestamp", "portfolio_value", "cash", "open", "entry_price",
-                                         "position_side", "position_size", "unrealized_pnl_percent"])
+    order_df = pd.DataFrame(
+        order_logger,
+        columns=[
+            "timestamp",
+            "realized",
+            "realized_percent",
+            "prev_side",
+            "desired_side",
+            "hold_bars",
+            "order_price",
+        ],
+    )
+    portfolio_df = pd.DataFrame(
+        portfolio_logger,
+        columns=[
+            "timestamp",
+            "portfolio_value",
+            "cash",
+            "open",
+            "entry_price",
+            "position_side",
+            "position_size",
+            "unrealized_pnl_percent",
+        ],
+    )
     portfolio_df.index = pd.to_datetime(portfolio_df["timestamp"])
     order_df.index = pd.to_datetime(order_df["timestamp"])
 
     if log_time:
         print(f"backtest completed in {time.time() - t} seconds")
 
-    return order_df, portfolio_df
+    return BacktestResults(order_df, portfolio_df, simple_interest)
 
 
-def strategy(fn):
-    def wrapped(config, df):
-        df.backtest.add_defaults()
-        df = fn(config, df)
-        return df
-    return wrapped
+class MultiTickerBacktestResults:
+    def __init__(self, portfolio_seq, order_df, result_dict):
+        self.portfolio_seq = portfolio_seq
+        self.order_df = order_df
+        self.result_dict = result_dict
 
 
-def do_multi_ticker_backtest(strategy, data_dict, config, log_time=False, simple_interest=False):
-    result_dict = {ticker : strategy(df, config).backtest(log_time=log_time, simple_interest=simple_interest) for ticker, df in data_dict.items()}
+def do_multi_ticker_backtest(
+    strategy, data_dict, config, log_time=False, simple_interest=False
+):
+    result_dict = {
+        ticker: strategy(df, config).backtest(
+            log_time=log_time, simple_interest=simple_interest
+        )
+        for ticker, df in data_dict.items()
+    }
     order_df_lst = [v[0] for v in result_dict.values()]
+
+    for ticker, order_df in zip(result_dict.keys(), order_df_lst):
+        order_df["ticker"] = ticker
+
     portfolio_df_lst = [v[1] for v in result_dict.values()]
-    
+
     index_len = np.inf
     index = None
-    
+
     for port_df in portfolio_df_lst:
         if len(port_df.index) < index_len:
             index_len = len(port_df.index)
@@ -342,44 +504,8 @@ def do_multi_ticker_backtest(strategy, data_dict, config, log_time=False, simple
 
     for port_df in portfolio_df_lst[1:]:
         pfseq = port_df.portfolio_value.reindex(index)
-        portfolio_seq += (pfseq / pfseq.iloc[0])
-    
-    return portfolio_seq, pd.concat(order_df_lst), result_dict
-    
+        portfolio_seq += pfseq / pfseq.iloc[0]
 
-def test_ma_crossover():
-    from deepcrypto.data_utils.crawlers.binance_crawler import read_binance_data
-
-
-    data = read_binance_data("/home/ych/Storage/binance/binance.db", "1H", "BTCUSDT")
-
-    data = data.backtest.add_defaults()
-
-    data["fastma"] = data["open"].rolling(15).mean()
-    data["slowma"] = data["open"].rolling(150).mean()
-
-    data["vol_diff"] = data["volume"] / data["volume"].rolling(50).mean() > 5
-
-    # data["enter_short"] = data["slowma"] < data["fastma"]
-    data["enter_long"] = data["slowma"] > data["fastma"]
-
-    data["bet"] = 1
-
-    data["trade_cost"] = 0.001
-    data["take_profit"] = 0.1
-    data["stop_loss"] = 0.000000001
-
-    data["time_cut"] = 24
-
-    order_df, portfolio_df = data.backtest.run()
-    order_df.to_csv("./order.csv")
-
-    import quantstats as qs
-
-    qs.reports.html(portfolio_df["portfolio_value"].resample("1D").last(), benchmark=portfolio_df["open"].resample("1D").last(), output="./out.html")
-
-
-if __name__ == '__main__':
-    for x in range(2):
-        test_ma_crossover()
-
+    return MultiTickerBacktestResults(
+        portfolio_seq, pd.concat(order_df_lst).sort_index(), result_dict
+    )

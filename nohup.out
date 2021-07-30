@@ -311,3 +311,5 @@ loaded data
   0%|          | 0/25 [00:00<?, ?it/s]  4%|▍         | 1/25 [00:25<10:22, 25.95s/it]  8%|▊         | 2/25 [00:27<04:30, 11.75s/it] 24%|██▍       | 6/25 [00:28<00:55,  2.92s/it] 28%|██▊       | 7/25 [00:30<00:48,  2.69s/it] 52%|█████▏    | 13/25 [00:52<00:40,  3.34s/it] 56%|█████▌    | 14/25 [00:54<00:34,  3.12s/it] 64%|██████▍   | 16/25 [00:54<00:20,  2.31s/it] 72%|███████▏  | 18/25 [00:55<00:12,  1.73s/it] 80%|████████  | 20/25 [00:57<00:07,  1.50s/it] 84%|████████▍ | 21/25 [00:58<00:05,  1.36s/it] 96%|█████████▌| 24/25 [00:59<00:00,  1.06it/s]100%|██████████| 25/25 [01:13<00:00,  3.16s/it]100%|██████████| 25/25 [01:13<00:00,  2.94s/it]
 [i] Total indicators: 29
 [i] Columns added: 34
+python: can't open file 'strategyfactory_experiments/full_swing/full_swing.py': [Errno 2] No such file or directory
+python: can't open file 'strategyfactory_experiments/full_swing/full_swing.py': [Errno 2] No such file or directory
