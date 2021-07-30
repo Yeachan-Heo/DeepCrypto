@@ -324,28 +324,10 @@ def run_backtest_compiled(
             elif not position_side:
                 last_entry = np.inf
 
-            order_logger.append(
-                (
-                    timestamp,
-                    realized,
-                    fee,
-                    realized_percent,
-                    temp,
-                    target_position,
-                    hold_bars,
-                    price,
-                )
-            )
-
-            if ((not temp) and position_side) or (temp and (temp != position_side)):
-                last_entry = i
-
-            elif not position_side:
-                last_entry = np.inf
-
         portfolio_value = update_portfolio_value(
             cash, entry_price, open, position_side, position_size
         )
+
         portfolio_value_logger.append(
             (
                 timestamp,
@@ -439,6 +421,8 @@ def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True
         columns=[
             "timestamp",
             "realized",
+            "fee",
+            "reason",
             "realized_percent",
             "prev_side",
             "desired_side",
