@@ -30,7 +30,7 @@ class BinanceFuturesBroker(WebsocketBrokerBase):
         if not contract_type in ["perpetual", "current_quarter", "next_quarter"]:
             raise ValueError("invalid contract type")
 
-        super(BinanceFuturesBroker, self).__init__(**kwargs)
+        super(BinanceFuturesBroker, self).__init__(**kwargs, bet_size=bet_size)
 
         self.url = f"wss://fstream.binance.com/ws/{self.symbol.lower()}_{contract_type}@continuousKline_{self.timeframe}"
 
@@ -78,6 +78,10 @@ class BinanceFuturesBroker(WebsocketBrokerBase):
 
         position_side = int(np.sign(position_size))
 
+        price = self.exchange.fetch_ohlcv(
+            symbol=self.ticker, timeframe=self.timeframe, limit=1
+        )[-1][0]
+
         (
             self.portfolio_value,
             self.price,
@@ -86,7 +90,7 @@ class BinanceFuturesBroker(WebsocketBrokerBase):
             self.position_side,
         ) = (
             cashleft + unrealized,
-            self.data.iloc[-1]["close"],
+            price,
             cashleft,
             abs(position_size),
             position_side,

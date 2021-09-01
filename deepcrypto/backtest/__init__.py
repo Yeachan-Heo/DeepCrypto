@@ -3,7 +3,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 import time
-import os
+import ray
 
 
 @njit(cache=True)
@@ -380,6 +380,7 @@ class BacktestResults:
         self.order_df = order_df
         self.portfolio_df = portfolio_df
         self.simple_interest = simple_interest
+        self.portfolio_seq = self.portfolio_df.portfolio_value.resample("1D").last()
 
 
 def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True):
@@ -453,27 +454,37 @@ def run_backtest_df(df, initial_cash=10000, simple_interest=False, log_time=True
 
 
 class MultiTickerBacktestResults:
-    def __init__(self, portfolio_seq, order_df, result_dict):
-        self.portfolio_seq = portfolio_seq
+    def __init__(self, portfolio_seq, order_df, result_dict, simple_interest):
+        self.portfolio_seq = portfolio_seq.resample("1D").last()
         self.order_df = order_df
         self.result_dict = result_dict
+        self.simple_interest = simple_interest
+
+
+@ray.remote
+def run_backtest_ray(strategy, config, df, **kwargs):
+    result_df = run_backtest_df(strategy(df, config), **kwargs)
+    return result_df
 
 
 def do_multi_ticker_backtest(
     strategy, data_dict, config, log_time=False, simple_interest=False
 ):
     result_dict = {
-        ticker: strategy(df, config).backtest(
-            log_time=log_time, simple_interest=simple_interest
+        ticker: run_backtest_ray.remote(
+            strategy, config, df, log_time=log_time, simple_interest=simple_interest
         )
         for ticker, df in data_dict.items()
     }
-    order_df_lst = [v[0] for v in result_dict.values()]
+
+    result_dict = {ticker: ray.get(df) for ticker, df in result_dict.items()}
+
+    order_df_lst = [v.order_df for v in result_dict.values()]
 
     for ticker, order_df in zip(result_dict.keys(), order_df_lst):
         order_df["ticker"] = ticker
 
-    portfolio_df_lst = [v[1] for v in result_dict.values()]
+    portfolio_df_lst = [v.portfolio_df for v in result_dict.values()]
 
     index_len = np.inf
     index = None
@@ -491,5 +502,35 @@ def do_multi_ticker_backtest(
         portfolio_seq += pfseq / pfseq.iloc[0]
 
     return MultiTickerBacktestResults(
-        portfolio_seq, pd.concat(order_df_lst).sort_index(), result_dict
+        portfolio_seq,
+        pd.concat(order_df_lst).sort_index(),
+        result_dict,
+        simple_interest,
     )
+
+
+def get_longest_index(data_dict):
+    longest_index = []
+    for df in data_dict.values():
+        if len(longest_index) < df.index:
+            longest_index = df.index
+    return df.index
+
+
+def calc_avaliable_tickers(data_dict, from_date, to_date):
+    tickers = []
+    for ticker, df in data_dict.items():
+        try:
+            sliced = df[from_date:to_date]
+        except IndexError:
+            continue
+        if (sliced.index[0] != from_date) | (sliced.index[-1] == to_date):
+            continue
+        tickers.append(ticker)
+    return tickers
+
+
+def do_rotational_multi_ticker_backtest(
+    strategy, ticker_rotation_strategy, data_dict, period="M"
+):
+    longest_index = get_longest_index(data_dict)

@@ -11,20 +11,20 @@ import tqdm
 import time
 
 
-def generate_backtest_fn(metric_fn):
+def generate_backtest_fn(metric_fn, simple_interest):
     @ray.remote
     def backtest_fn(df, config, strategy, cnt):
         warnings.filterwarnings("ignore")
         df = df.copy()
         df = strategy(df, config)
-        order_df, port_df = run_backtest_df(df, log_time=False)
+        result = run_backtest_df(df, log_time=False, simple_interest=simple_interest)
 
         try:
-            metric = metric_fn(order_df, port_df)
+            metric = metric_fn(result)
         except:
             metric = None
 
-        return metric, config, cnt, order_df, port_df
+        return metric, config, cnt, result
 
     return backtest_fn
 
@@ -40,6 +40,7 @@ class OptimizerBase:
         strategy_name="strategy",
         n_cores=None,
         total_steps=1,
+        simple_interest=False,
     ):
         self.data = data
         self.data = self.data.backtest.add_defaults()
@@ -53,7 +54,7 @@ class OptimizerBase:
 
         self.result = []  # dict of config + metrics
         self.n_cores = n_cores if n_cores is not None else psutil.get_cpu_count()
-        self.backtest_fn = generate_backtest_fn(metric_fn)
+        self.backtest_fn = generate_backtest_fn(metric_fn, simple_interest)
 
         self.process_queue = []
         self.cnt = -1
@@ -89,7 +90,7 @@ class OptimizerBase:
                     )
 
                 if len(self.process_queue) > self.n_cores:
-                    result, config, cnt, _, _ = ray.get(self.process_queue[0])
+                    result, config, cnt, _ = ray.get(self.process_queue[0])
 
                     if not result is None:
                         self.save_result(config, result, cnt)
@@ -151,20 +152,19 @@ class BruteForceOptimizer(OptimizerBase):
 
 
 class ForwardTestResults:
-    def __init__(self, return_arr, best_config, order_df_lst, port_df_lst, result_df):
+    def __init__(self, return_arr, best_config, result_lst, result_df):
         self.return_arr = return_arr
         self.best_config = best_config
-        self.order_df_lst = order_df_lst
-        self.port_df_lst = port_df_lst
+        self.result_lst = result_lst
         self.result_df = result_df
 
 
 def do_forward_testing(
-    data, optimizer_cls, n_chunks=4, best_metric_name="metric", mode_max=True, **kwargs
+    data, optimizer_cls, n_chunks=5, best_metric_name="metric", mode_max=True, **kwargs
 ):
     data_chunk_len = len(data.index) // n_chunks
 
-    order_df_lst, port_df_lst = [], []
+    result_lst = []
     return_arr = None
     initial_cash = 0
 
@@ -183,13 +183,13 @@ def do_forward_testing(
         best_config = optim.get_best_result(best_metric_name, mode_max)
 
         if not data_test.empty:
-            _, _, _, order_df, port_df = ray.get(
+            _, _, _, result = ray.get(
                 optim.backtest_fn.remote(data_test, best_config, optim.strategy, 0)
             )
-            order_df_lst.append(order_df)
-            port_df_lst.append(port_df)
+            result_lst.append(result)
 
-    for port_df in port_df_lst:
+    for res in result_lst:
+        port_df = res.portfolio_df
         if return_arr is None:
             initial_cash = port_df["portfolio_value"].iloc[0]
             return_arr = port_df["portfolio_value"] / initial_cash
@@ -199,6 +199,4 @@ def do_forward_testing(
         return_arr = return_arr[~return_arr.index.duplicated()]
         return_arr = return_arr.sort_index()
 
-    return ForwardTestResults(
-        return_arr, best_config, order_df_lst, port_df_lst, optim.result_df
-    )
+    return ForwardTestResults(return_arr, best_config, result_lst, optim.result_df)

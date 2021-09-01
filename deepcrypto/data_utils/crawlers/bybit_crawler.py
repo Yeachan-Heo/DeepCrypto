@@ -6,16 +6,16 @@ import psutil
 import tqdm
 
 
-def download_binance_data(
-    market, db_path="/home/ych/Storage/binance/binance_futures.db", symbols="all"
+def download_bybit_data(
+    db_path="/home/ych/Storage/binance/bybit_futures.db", symbols="all"
 ):
     # DB 초기화
-    db = sqlite3.connect(db_path)
+    db = sqlite3.connect(
+        db_path,
+    )
 
     # CCXT binance 거래소: 선물을 기본으로 함
-    binance = ccxt.binance(
-        {"options": {"defaultType": market}, "enableRateLimit": True}
-    )
+    binance = ccxt.bybit()
 
     # symbols == "all" 이라면 모든 티커 다운로드
     all_symbols = [mkt["symbol"] for mkt in binance.fetch_markets()]
@@ -61,12 +61,16 @@ def download_binance_data(
 
         while True:
             # 바이낸스에서 1분봉 받아오기
-            tohlcv = binance.fetch_ohlcv(
-                symbol=symbol,
-                timeframe="1m",
-                params={"startTime": timestamp},
-                limit=1500,
-            )
+            try:
+                tohlcv = binance.fetch_ohlcv(
+                    symbol=symbol,
+                    timeframe="1m",
+                    params={"begin": timestamp},
+                    limit=200,
+                )
+            except:
+                time.sleep(1)
+                continue
 
             # 1분봉이 없다면 -> 타임스탬프가 현재 시점(최신)이므로 루프를 끝냄
             if not tohlcv:
@@ -90,6 +94,15 @@ def download_binance_data(
             # 현재 지난 시간
             delta_t = time.time() - t
 
+            for timestamp, open, high, low, close, volume in data:
+                db.execute(
+                    f"""
+                INSERT INTO _{symbol.replace('/', '')} VALUES (
+                {timestamp}, {open}, {high}, {low}, {close}, {volume}
+                )"""
+                )
+            data.clear()
+
             # 로깅
             print(
                 f"""downloaded {downloaded} rows for {symbol} in {round(delta_t, 3)} seconds, download speed is {round(downloaded / delta_t, 3)} row per second""",
@@ -106,10 +119,11 @@ def download_binance_data(
                {timestamp}, {open}, {high}, {low}, {close}, {volume}
             )"""
             )
+
         db.commit()
 
 
-def read_binance_data(db_path, symbol, timeframe):
+def read_bybit_data(db_path, symbol, timeframe):
     # symbol이 BTC/USDT와 같은 형태로 들어오면 DB와 맞지 않으므로 BTCUSDT 처럼 바꿈
     symbol = symbol.replace("/", "")
 
@@ -146,14 +160,14 @@ def read_binance_data(db_path, symbol, timeframe):
     return data.ffill()
 
 
-def _read_binance_data(args):
-    return read_binance_data(*args)
+def _read_bybit_data(args):
+    return read_bybit_data(*args)
 
 
 def read_multiple_data(db_path, symbols, timeframe):
     args_lst = [(db_path, symbol, timeframe) for symbol in symbols]
     pool = multiprocessing.Pool(psutil.cpu_count())
-    return dict(zip(symbols, pool.map(_read_binance_data, args_lst)))
+    return dict(zip(symbols, pool.map(_read_bybit_data, args_lst)))
 
 
 def get_longest_index(df_lst):
@@ -200,7 +214,7 @@ def export_data(db_path, symbols, timeframes, export_dir):
     for symbol in symbols:
         for timeframe in timeframes:
             # 데이터 가져오기
-            df = read_binance_data(db_path)
+            df = read_bybit_data(db_path)
 
             # export path: export_dir/symbol_timeframe.csv
             export_path = os.path.join(export_dir, f"{symbol}_{timeframe}.csv")
@@ -217,18 +231,15 @@ if __name__ == "__main__":
     # argparse
     parser = argparse.ArgumentParser()
 
-    # argument #0 market "spot" or "future"
-    parser.add_argument("--market", default="future", type=str)
-
     # argument #1 db_path: 데이터베이스 경로
     parser.add_argument(
         "--db_path",
-        default="/home/ych/Storage/binance/binance_futures_new.db",
+        default="/home/ych/Storage/bybit/bybit_futures.db",
         type=str,
     )
 
     # argument #2 symbols: "all"로 설정 시 모든 티커 다운로드, 혹은 ,를 구분자로 하여 스트링으로 입력 가능
-    DEFAULT_TICKERS = "BTC/USDT,ETH/USDT,XRP/USDT,BNB/USDT,ADA/USDT,DOGE/USDT,DOT/USDT,UNI/USDT,BCH/USDT,LTC/USDT,SOL/USDT,LINK/USDT,MATIC/USDT,ETC/USDT,THETA/USDT,XLM/USDT,ICP/USDT,VET/USDT,NEO/USDT,FIL/USDT,TRX/USDT,XMR/USDT,EOS/USDT,AAVE/USDT"
+    DEFAULT_TICKERS = "BTC/USD,ETH/USD,XRP/USD,EOS/USD"
     parser.add_argument("--symbols", default=DEFAULT_TICKERS, type=str)
 
     # 익스포트할 경로, 디렉토리까지만 써 주면 된다. (써져 있으면 익스포트 모드로 동작한다)
@@ -240,12 +251,9 @@ if __name__ == "__main__":
     # 파싱
     args = parser.parse_args()
 
-    if not args.market in ["future", "spot"]:
-        raise ValueError(f"market should be 'spot' or 'future', got {args.market}")
-
     # 다운로드 함수 실행 (다운로드 모드)
     if args.export_dir is None:
-        download_binance_data(args.market, args.db_path, args.symbols)
+        download_bybit_data(args.db_path, args.symbols)
     # 익스포트 함수 실행 (익스포트 모드)
     else:
         export_data(

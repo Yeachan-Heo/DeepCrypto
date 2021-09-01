@@ -171,7 +171,7 @@ class WebsocketBrokerBase:
                 target_pos
                 * res["bet"]
                 * (self.portfolio_value if not self.simple_interest else self.bet_size)
-                / self.price
+                / (self.price if not self.simple_interest else 1)
             )
             order_amount = target_amount - self.position_size * self.position_side
             order_size, order_side = np.abs(order_amount), np.sign(order_amount)
@@ -255,7 +255,6 @@ class WebsocketBrokerBase:
                 self.log_db.commit()
                 self.trade_step()
         except Exception as e:
-            print(e)
             self.log_db.execute(
                 f"""
                 INSERT INTO ERRORS VALUES (
@@ -266,11 +265,14 @@ class WebsocketBrokerBase:
             )
             self.log_db.commit()
 
+    def on_open(self, x):
+        print("START TRADER")
+
     def trade(self):
         self.ws_app = websocket.WebSocketApp(
             self.url,
             on_message=lambda ws, msg: self.on_message(msg),
-            on_open=lambda x: print("START TRADER"),
+            on_open=lambda x: self.on_open(x),
             on_close=lambda x: print("CLOSE TRADER"),
             on_error=lambda x: print(x),
         )

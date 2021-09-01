@@ -13,9 +13,5 @@ deepcrypto/brokers/ws_broker.py
 deepcrypto/data_utils/__init__.py
 deepcrypto/data_utils/crawlers/__init__.py
 deepcrypto/data_utils/crawlers/binance_crawler.py
-deepcrypto/data_utils/crawlers/binance_futures.py
-deepcrypto/data_utils/crawlers/binance_spot.py
 deepcrypto/optimization/__init__.py
 deepcrypto/portfolio_analysis/__init__.py
-deepcrypto/strategy/__init__.py
-deepcrypto/strategy/utils.py
